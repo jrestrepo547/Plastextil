@@ -201,10 +201,9 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
       <div class="fr">
         <div class="fg"><label>Fecha</label><input type="date" id="p-fecha"></div>
         <div class="fg"><label>Proyecto</label><select id="p-proy" onchange="loadProd()"><option value="">— Seleccionar —</option></select></div>
-        <div class="fg"><label>Turno</label><select id="p-turno">
-          <option>Mañana (6am–2pm)</option><option>Tarde (2pm–10pm)</option>
-          <option>Noche (10pm–6am)</option><option>Completo (8h)</option>
-        </select></div>
+        <div class="fg"><label>Hora inicio</label><input type="time" id="p-hinicio" value="06:00"></div>
+        <div class="fg"><label>Hora fin</label><input type="time" id="p-hfin" value="14:00"></div>
+        <div class="fg"><label>Duración</label><div id="p-duracion" style="border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-size:13px;background:#f6f8fa;color:var(--muted);font-weight:600">8h 00min</div></div>
       </div>
     </div>
   </div>
@@ -299,7 +298,8 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 <!-- MODAL PERFIL -->
 <div class="mo" id="mo-perf">
 <div class="md" style="max-width:480px">
-  <div class="mh">🔧 Nuevo perfil</div>
+  <div class="mh">🔧 <span id="mo-perf-tit">Nuevo perfil</span></div>
+  <input type="hidden" id="pf-edit-id">
   <div class="fr">
     <div class="fg"><label>Nombre</label><input type="text" id="pf-nom" placeholder="PTS 60×60×3mm"></div>
     <div class="fg"><label>Tipo</label><select id="pf-tipo">
@@ -498,6 +498,24 @@ function initFecha(){
   const d=new Date();
   document.getElementById('nfecha').textContent=d.toLocaleDateString('es-CO',{weekday:'short',day:'numeric',month:'short'});
   document.getElementById('p-fecha').value=d.toISOString().slice(0,10);
+  // Calcular duración al cambiar horas
+  function calcDur(){
+    const hi=document.getElementById('p-hinicio').value;
+    const hf=document.getElementById('p-hfin').value;
+    const el=document.getElementById('p-duracion');
+    if(!hi||!hf){el.textContent='—';return;}
+    const [hhi,mmi]=hi.split(':').map(Number);
+    const [hhf,mmf]=hf.split(':').map(Number);
+    let mins=(hhf*60+mmf)-(hhi*60+mmi);
+    if(mins<0)mins+=24*60; // turno nocturno
+    const h=Math.floor(mins/60);
+    const m=mins%60;
+    el.textContent=`${h}h ${m.toString().padStart(2,'0')}min`;
+    el.style.color=mins>0?'var(--green)':'var(--red)';
+  }
+  document.getElementById('p-hinicio').addEventListener('change',calcDur);
+  document.getElementById('p-hfin').addEventListener('change',calcDur);
+  calcDur();
 }
 
 // ── TIPO ─────────────────────────────────────────────────────────────────────
@@ -731,9 +749,13 @@ window.loadProd = function(){
   if(!pjId){el.innerHTML='<div class="empty"><div class="ic">⚙️</div>Selecciona un proyecto.</div>';return;}
   const pj=proyectos.find(p=>p.id===pjId); if(!pj)return;
   const sol=gSol(curSol); const reg=getReg(pjId,fecha,curSol);
+  const hi=document.getElementById('p-hinicio')?.value||'';
+  const hf=document.getElementById('p-hfin')?.value||'';
+  const durStr=(()=>{if(!hi||!hf)return'';const [hhi,mmi]=hi.split(':').map(Number);const [hhf,mmf]=hf.split(':').map(Number);let mins=(hhf*60+mmf)-(hhi*60+mmi);if(mins<0)mins+=1440;return`${Math.floor(mins/60)}h${(mins%60).toString().padStart(2,'0')}min`;})();
   el.innerHTML=`<div class="card">
     <div class="ch" style="background:${sol.color};color:#fff;border-radius:7px 7px 0 0">
       ${sol.emoji} ${sol.nombre} — ${fecha?new Date(fecha+'T12:00').toLocaleDateString('es-CO',{weekday:'long',day:'numeric',month:'long'}):'—'}
+      ${hi&&hf?`<span style="margin-left:12px;font-size:11px;opacity:.85;font-weight:400">⏱ ${hi} → ${hf} (${durStr})</span>`:''}
     </div>
     <div class="cb">
       <div style="display:grid;grid-template-columns:68px 1fr 95px 75px 85px 72px;gap:7px;padding:0 4px 7px;border-bottom:1px solid var(--border);margin-bottom:7px">
@@ -778,7 +800,9 @@ window.upReg = async function(pjId,fecha,solId,plano,val){
   let existing=registros.find(r=>r.id===regId);
   const piezas=existing?{...existing.piezas}:{};
   piezas[plano]=val;
-  await fbSet('registros',regId,{id:regId,proyId:pjId,fecha,solId,piezas});
+  const hinicio=document.getElementById('p-hinicio')?.value||'';
+  const hfin=document.getElementById('p-hfin')?.value||'';
+  await fbSet('registros',regId,{id:regId,proyId:pjId,fecha,solId,piezas,hinicio,hfin});
   const tot=Object.values(piezas).reduce((a,b)=>a+b,0);
   const el=document.getElementById('sstatus');
   if(el){el.textContent=`✓ Guardado — Total turno: ${tot} und`;setTimeout(()=>{if(el)el.textContent='';},3000);}
@@ -795,17 +819,35 @@ function rPerf(){
       <td><code style="font-size:11px">${p.dims||'—'}</code></td>
       <td><strong>${p.rend}</strong><span style="font-size:10px;color:var(--muted)"> m/h</span></td>
       <td style="font-size:11px;color:var(--muted)">${p.notas||'—'}</td>
-      <td><button class="btn bd2 bsm" onclick="delPerf('${p.id}')">🗑</button></td>
+      <td style="display:flex;gap:5px">
+        <button class="btn bg2 bsm" onclick="editPerf('${p.id}')">✏️</button>
+        <button class="btn bd2 bsm" onclick="delPerf('${p.id}')">🗑</button>
+      </td>
     </tr>`).join('')}</tbody></table>`;
 }
 window.openPerfil = function(){
   ['pf-nom','pf-dims','pf-notas'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('pf-tipo').value='PTS';document.getElementById('pf-rend').value='';
+  document.getElementById('pf-tipo').value='PTS';
+  document.getElementById('pf-rend').value='';
+  document.getElementById('pf-edit-id').value='';
+  document.getElementById('mo-perf-tit').textContent='Nuevo perfil';
+  document.getElementById('mo-perf').classList.add('open');
+};
+window.editPerf = function(id){
+  const p=perfiles.find(x=>x.id===id); if(!p)return;
+  document.getElementById('pf-edit-id').value=p.id;
+  document.getElementById('mo-perf-tit').textContent='Editar perfil';
+  document.getElementById('pf-nom').value=p.nombre||'';
+  document.getElementById('pf-tipo').value=p.tipo||'PTS';
+  document.getElementById('pf-dims').value=p.dims||'';
+  document.getElementById('pf-rend').value=p.rend||'';
+  document.getElementById('pf-notas').value=p.notas||'';
   document.getElementById('mo-perf').classList.add('open');
 };
 window.savePerfil = async function(){
   const nom=document.getElementById('pf-nom').value.trim();if(!nom){alert('Ingresa el nombre.');return;}
-  const id=uid();
+  const editId=document.getElementById('pf-edit-id').value;
+  const id=editId||uid();
   await fbSet('perfiles',id,{id,nombre:nom,tipo:document.getElementById('pf-tipo').value,
     dims:document.getElementById('pf-dims').value.trim(),
     rend:parseFloat(document.getElementById('pf-rend').value)||0,
