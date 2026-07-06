@@ -142,7 +142,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 /* MODAL */
 .mo{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center}
 .mo.open{display:flex}
-.md{background:#fff;border-radius:10px;width:96%;max-width:740px;box-shadow:0 8px 40px rgba(0,0,0,.3);height:96vh;overflow:hidden;display:flex;flex-direction:column;padding:0}.md-hdr{padding:18px 22px 0 22px;flex-shrink:0}.md-scr{overflow-y:visible;padding:0 22px;flex-shrink:0}.md-ftr{padding:10px 22px 18px 22px;flex-shrink:0;border-top:1px solid var(--border);background:#fff}
+.md{background:#fff;border-radius:10px;padding:22px;width:96%;max-width:740px;box-shadow:0 8px 40px rgba(0,0,0,.3);max-height:95vh;overflow-y:auto}
 .mh{font-size:15px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px}
 .mf{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
 /* LOADING */
@@ -229,12 +229,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 <!-- MODAL PROYECTO -->
 <div class="mo" id="mo-proy">
 <div class="md">
-  <!-- CABECERA FIJA -->
-  <div class="md-hdr">
-    <div class="mh">📁 <span id="mo-tit">Nuevo proyecto</span></div>
-  </div>
-  <!-- CUERPO CON SCROLL -->
-  <div class="md-scr">
+  <div class="mh">📁 <span id="mo-tit">Nuevo proyecto</span></div>
     <input type="hidden" id="eid">
     <div class="sec">Tipo de proyecto</div>
     <div class="tipo-sel">
@@ -273,9 +268,6 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
       </div>
     </div>
     <div class="divider"></div>
-  </div>
-  <!-- SECCIÓN PIEZAS: ocupa todo el espacio restante -->
-  <div style="flex:1;min-height:0;display:flex;flex-direction:column;padding:0 22px;overflow:hidden">
     <div class="sec" style="flex-shrink:0">Piezas del proyecto</div>
     <div style="display:flex;gap:7px;align-items:center;margin-bottom:8px;flex-shrink:0">
       <select id="add-cat" style="flex:1;padding:6px 9px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit"></select>
@@ -294,16 +286,12 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
     </div>
     <!-- LISTA: flex:1 para que tome el espacio restante y scrollee -->
     <div style="border:1.5px solid var(--border);border-top:none;border-radius:0 0 8px 8px;flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden">
-      <div id="pj-piezas" style="flex:1;min-height:0;overflow-y:scroll;display:block;scrollbar-width:thin;scrollbar-color:var(--accent) #dde1e7"></div>
+      <div id="pj-piezas" style="height:260px;overflow-y:scroll;display:block;scrollbar-width:thin;scrollbar-color:var(--accent) #dde1e7"></div>
       <div id="pj-tots" style="display:none;border-top:2px solid var(--accent);background:#f0f4f8;padding:8px 12px;font-size:12px;gap:16px;flex-wrap:wrap;flex-shrink:0"></div>
     </div>
-  </div>
-  <!-- PIE FIJO -->
-  <div class="md-ftr">
-    <div style="display:flex;gap:8px;justify-content:flex-end">
-      <button class="btn bg2" onclick="closeM('mo-proy')">Cancelar</button>
-      <button class="btn bp" onclick="saveProy()">💾 Guardar proyecto</button>
-    </div>
+  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+    <button class="btn bg2" onclick="closeM('mo-proy')">Cancelar</button>
+    <button class="btn bp" onclick="saveProy()">💾 Guardar proyecto</button>
   </div>
 </div>
 </div>
