@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Plastextil — Control de Producción</title>
+<style>
+:root{
+  --steel:#1e2d3d;--steel-md:#2e4a63;--steel-lt:#4a7090;
+  --accent:#e87722;--accent-lt:#ff9940;--weld:#f5c842;
+  --green:#2e7d52;--green-lt:#e2f0e8;
+  --red:#c0392b;--red-lt:#fce8e6;
+  --amber:#c07820;--amber-lt:#fff3d0;
+  --bg:#f0f2f5;--card:#fff;--border:#dde1e7;
+  --text:#1a2332;--muted:#6b7a8d;
+  --radius:8px;--shadow:0 1px 4px rgba(0,0,0,.10),0 4px 16px rgba(0,0,0,.06);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh}
+/* NAV */
+.nav{background:var(--steel);display:flex;align-items:center;padding:0 18px;height:52px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.nl{font-size:14px;font-weight:700;color:#fff;margin-right:24px;display:flex;align-items:center;gap:7px}
+.ni{width:26px;height:26px;background:var(--accent);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:13px}
+.na{color:var(--accent)}
+.nt{display:flex;gap:1px;flex:1;overflow-x:auto}
+.ntb{padding:0 13px;height:52px;display:flex;align-items:center;font-size:12px;color:rgba(255,255,255,.6);cursor:pointer;border-bottom:3px solid transparent;background:none;border-top:none;border-left:none;border-right:none;white-space:nowrap;transition:all .15s;flex-shrink:0}
+.ntb:hover{color:#fff;background:rgba(255,255,255,.05)}
+.ntb.active{color:var(--accent-lt);border-bottom-color:var(--accent);font-weight:600}
+.nchip{background:rgba(255,255,255,.12);color:rgba(255,255,255,.8);font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;margin-left:auto;white-space:nowrap;flex-shrink:0}
+/* STATUS */
+.sync-bar{height:3px;background:var(--green);transition:all .3s;position:fixed;top:52px;left:0;right:0;z-index:99;opacity:0}
+.sync-bar.syncing{opacity:1;background:var(--amber);animation:pulse 1s infinite}
+.sync-bar.error{opacity:1;background:var(--red)}
+@keyframes pulse{0%,100%{opacity:.6}50%{opacity:1}}
+/* LAYOUT */
+.page{display:none;padding:18px;max-width:1120px;margin:0 auto}
+.page.active{display:block}
+.weld{height:3px;background:linear-gradient(90deg,var(--accent),var(--weld),var(--accent));opacity:.5;margin:-1px 0 14px;border-radius:0 0 2px 2px}
+/* CARDS */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:14px}
+.ch{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px;font-weight:600;font-size:13px}
+.cb{padding:14px 16px}
+/* KPI */
+.kg{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;box-shadow:var(--shadow)}
+.kv{font-size:24px;font-weight:700;line-height:1.1}
+.kl{font-size:10px;color:var(--muted);margin-top:3px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.kpi.ac{border-left:3px solid var(--accent)}.kpi.gn{border-left:3px solid var(--green)}.kpi.am{border-left:3px solid var(--amber)}
+/* FORMS */
+.fr{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:10px}
+.fg{display:flex;flex-direction:column;gap:3px}
+.fg label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.fg input,.fg select,.fg textarea{border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-size:13px;font-family:inherit;background:#fff;color:var(--text);outline:none;transition:border-color .15s}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--steel-lt);box-shadow:0 0 0 2px rgba(46,74,99,.12)}
+.fg input[type=number]{text-align:right}
+.fg textarea{resize:vertical;min-height:52px}
+.unit-wrap{position:relative}
+.unit-wrap input{padding-right:30px}
+.unit-label{position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--muted);font-weight:600;pointer-events:none}
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:6px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;border:none;transition:all .15s}
+.bp{background:var(--accent);color:#fff}.bp:hover{background:var(--accent-lt)}
+.bg2{background:transparent;color:var(--muted);border:1px solid var(--border)}.bg2:hover{background:var(--bg);color:var(--text)}
+.bsm{padding:4px 9px;font-size:11px}
+.bd2{background:var(--red-lt);color:var(--red);border:1px solid #f0b0ab}.bd2:hover{background:#f8d0cc}
+.bgn{background:var(--green-lt);color:var(--green);border:1px solid #a0c8b0}.bgn:hover{background:#c8e8d8}
+/* TABLE */
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{background:var(--steel);color:#fff;padding:8px 10px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+.tbl th:first-child{border-radius:5px 0 0 0}.tbl th:last-child{border-radius:0 5px 0 0}
+.tbl td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+.tbl tr:hover td{background:#f6f8fa}.tbl tr:last-child td{border-bottom:none}
+/* PROGRESS */
+.pw{background:var(--border);border-radius:4px;height:7px;overflow:hidden}
+.pb{height:100%;border-radius:4px;transition:width .4s}
+.pb.gn{background:var(--green)}.pb.am{background:var(--amber)}.pb.rd{background:var(--red)}.pb.ac{background:var(--accent)}
+/* BADGES */
+.badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:9px;font-size:10px;font-weight:600}
+.bok{background:var(--green-lt);color:var(--green)}.bwn{background:var(--amber-lt);color:var(--amber)}.ber{background:var(--red-lt);color:var(--red)}
+.tag-phr{background:#dce8f5;color:#1e3a5f;border-radius:3px;padding:1px 5px;font-size:10px;font-weight:700}
+.tag-pts{background:#dff0e0;color:#1a5c30;border-radius:3px;padding:1px 5px;font-size:10px;font-weight:700}
+.tag-enc{background:#ffeac0;color:#7a4a00;border-radius:3px;padding:1px 5px;font-size:10px;font-weight:700}
+/* PIECE LIST */
+.piece-list{display:flex;flex-direction:column;gap:6px;max-height:340px;overflow-y:scroll;padding-right:6px;scrollbar-width:thin;scrollbar-color:var(--accent) var(--border)}
+.piece-list::-webkit-scrollbar{width:6px}
+.piece-list::-webkit-scrollbar-track{background:var(--border);border-radius:3px}
+.piece-list::-webkit-scrollbar-thumb{background:var(--accent);border-radius:3px}
+.piece-list::-webkit-scrollbar-thumb:hover{background:var(--accent-lt)}
+#pj-piezas::-webkit-scrollbar{width:7px}
+#pj-piezas::-webkit-scrollbar-track{background:#f0f2f5;border-radius:0 0 6px 0}
+#pj-piezas::-webkit-scrollbar-thumb{background:var(--accent);border-radius:4px}
+#pj-piezas::-webkit-scrollbar-thumb:hover{background:var(--accent-lt)}
+.piezas-wrap{border:1px solid var(--border);border-radius:7px;overflow:hidden}
+.piezas-scroll{max-height:340px;overflow-y:scroll;scrollbar-width:thin;scrollbar-color:var(--accent) var(--border)}
+.piezas-scroll::-webkit-scrollbar{width:6px}
+.piezas-scroll::-webkit-scrollbar-track{background:var(--border)}
+.piezas-scroll::-webkit-scrollbar-thumb{background:var(--accent);border-radius:3px}
+.piezas-footer{position:sticky;bottom:0;background:#f0f4f8;border-top:2px solid var(--accent);padding:7px 11px;font-size:12px;display:flex;gap:16px;flex-wrap:wrap;z-index:2}
+.prow{background:#fafbfc;border-bottom:1px solid var(--border);overflow:hidden}.prow:last-child{border-bottom:none}.prow.enc{background:#fff8ee}
+.prow.enc{background:#fff8ee;border-color:#f0c878}
+.prow-main{display:grid;grid-template-columns:72px 1fr 120px 68px 70px 70px 34px;gap:6px;align-items:center;padding:7px 9px}
+.prow input,.prow select{border:1px solid var(--border);border-radius:5px;padding:5px 7px;font-size:12px;font-family:inherit;background:#fff;outline:none;width:100%}
+.prow input:focus,.prow select:focus{border-color:var(--accent)}
+.prow input[type=number]{text-align:right}
+/* DAILY */
+.dg{display:flex;flex-direction:column;gap:5px}
+.dr{display:grid;grid-template-columns:68px 1fr 95px 75px 85px 72px;gap:7px;align-items:center;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:#fff}
+.dr.enc{background:#fff8ee;border-color:#f0c878}
+.dr:hover{background:#f6f8fa}.dr.enc:hover{background:#fff3d8}
+.dr input[type=number]{border:1px solid var(--border);border-radius:5px;padding:5px 7px;font-size:13px;width:100%;text-align:center;font-family:inherit;outline:none}
+.dr input:focus{border-color:var(--accent)}
+.dpct{font-size:11px;font-weight:700;text-align:center;padding:3px 5px;border-radius:4px}
+/* SOL TABS */
+.stabs{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px}
+.stab{padding:6px 12px;border-radius:18px;font-size:11px;font-weight:600;cursor:pointer;border:2px solid transparent;transition:all .15s}
+/* PROJ CARD */
+.pjc{border:1px solid var(--border);border-radius:var(--radius);background:var(--card);box-shadow:var(--shadow);overflow:hidden;margin-bottom:10px}
+.pjch{padding:11px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none}
+.pjch:hover{background:#f8f9fb}
+.pjcb{padding:14px 16px;border-top:1px solid var(--border)}
+/* MISC */
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.chip{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:2px 7px;font-size:10px;font-weight:600;color:var(--muted)}
+.divider{height:1px;background:var(--border);margin:12px 0}
+.empty{text-align:center;padding:28px;color:var(--muted);font-size:13px}
+.empty .ic{font-size:30px;margin-bottom:7px}
+.sec{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:10px 0 8px;display:flex;align-items:center;gap:7px}
+.sec::after{content:'';flex:1;height:1px;background:var(--border)}
+.medidas-box{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:8px;background:#f6f8fa;border:1px solid var(--border);border-radius:7px;padding:10px 12px;margin-bottom:10px}
+.mfield label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;display:block;margin-bottom:2px}
+.mfield .mv{font-size:18px;font-weight:700;color:var(--steel)}
+.mfield .mu{font-size:10px;color:var(--muted)}
+.desc-box{background:#fffbf5;border:1px solid #f0d890;border-radius:6px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:#5a4000;line-height:1.5}
+.desc-box .dl{font-size:10px;font-weight:700;color:#a07020;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
+.tipo-sel{display:flex;gap:8px;margin-bottom:10px}
+.tipo-opt{flex:1;border:2px solid var(--border);border-radius:8px;padding:10px;text-align:center;cursor:pointer;transition:all .15s;font-size:12px;font-weight:600;color:var(--muted);background:#fff}
+.tipo-opt.sel-b{border-color:var(--steel);background:#dce8f5;color:var(--steel)}
+.tipo-opt.sel-e{border-color:var(--amber);background:#ffeac0;color:#7a4a00}
+.tipo-opt .ic{font-size:20px;display:block;margin-bottom:4px}
+.tipo-bodega{background:#dce8f5;color:#1e3a5f;border-radius:10px;padding:1px 8px;font-size:10px;font-weight:700;display:inline-flex;align-items:center;gap:3px}
+.tipo-especial{background:#ffeac0;color:#7a4a00;border-radius:10px;padding:1px 8px;font-size:10px;font-weight:700;display:inline-flex;align-items:center;gap:3px}
+/* MODAL */
+.mo{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center}
+.mo.open{display:flex}
+.md{background:#fff;border-radius:10px;width:96%;max-width:740px;box-shadow:0 8px 40px rgba(0,0,0,.3);height:96vh;overflow:hidden;display:flex;flex-direction:column}.md-hdr{padding:22px 22px 0 22px;flex-shrink:0}.md-scr{overflow-y:auto;padding:0 22px;flex-shrink:0}.md-ftr{padding:14px 22px 22px 22px;flex-shrink:0;border-top:1px solid var(--border)}
+.mh{font-size:15px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.mf{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+/* LOADING */
+.loading{display:flex;align-items:center;justify-content:center;gap:8px;padding:20px;color:var(--muted);font-size:13px}
+.spinner{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div class="sync-bar" id="sync-bar"></div>
+
+<nav class="nav">
+  <div class="nl"><div class="ni">🔩</div>PLAST<span class="na">EXTIL</span></div>
+  <div class="nt">
+    <button class="ntb active" onclick="go('dashboard',this)">📊 Dashboard</button>
+    <button class="ntb" onclick="go('proyectos',this)">📁 Proyectos</button>
+    <button class="ntb" onclick="go('produccion',this)">⚙️ Producción</button>
+    <button class="ntb" onclick="go('perfiles',this)">🔧 Perfiles</button>
+    <button class="ntb" onclick="go('equipo',this)">👷 Equipo</button>
+  </div>
+  <span class="nchip" id="nfecha"></span>
+</nav>
+
+<!-- DASHBOARD -->
+<div class="page active" id="page-dashboard">
+  <div class="weld"></div>
+  <div class="kg">
+    <div class="kpi ac"><div class="kv" id="k-proy">—</div><div class="kl">Proyectos activos</div></div>
+    <div class="kpi gn"><div class="kv" id="k-und">—</div><div class="kl">Unidades esta semana</div></div>
+    <div class="kpi am"><div class="kv" id="k-cumpl">—</div><div class="kl">Cumplimiento promedio</div></div>
+    <div class="kpi gn"><div class="kv" id="k-enc">—</div><div class="kl">Encajonados semana</div></div>
+    <div class="kpi ac"><div class="kv" id="k-sol">—</div><div class="kl">Soldadores activos</div></div>
+    <div class="kpi am"><div class="kv" id="k-peso">—</div><div class="kl">Peso total proyectos</div></div>
+  </div>
+  <div class="card"><div class="ch">📁 Avance por proyecto</div><div class="cb" id="d-proy"><div class="loading"><div class="spinner"></div>Cargando...</div></div></div>
+  <div class="card"><div class="ch">👷 Producción semanal — equipo</div><div class="cb" id="d-sol"><div class="loading"><div class="spinner"></div>Cargando...</div></div></div>
+</div>
+
+<!-- PROYECTOS -->
+<div class="page" id="page-proyectos">
+  <div class="weld"></div>
+  <div class="row">
+    <button class="btn bp" onclick="openProj()">＋ Nuevo proyecto</button>
+    <span class="chip" id="pj-count">—</span>
+  </div>
+  <div id="lista-proy"><div class="loading"><div class="spinner"></div>Cargando...</div></div>
+</div>
+
+<!-- PRODUCCIÓN -->
+<div class="page" id="page-produccion">
+  <div class="weld"></div>
+  <div class="card">
+    <div class="ch">📅 Configurar registro</div>
+    <div class="cb">
+      <div class="fr">
+        <div class="fg"><label>Fecha</label><input type="date" id="p-fecha"></div>
+        <div class="fg"><label>Proyecto</label><select id="p-proy" onchange="loadProd()"><option value="">— Seleccionar —</option></select></div>
+        <div class="fg"><label>Turno</label><select id="p-turno">
+          <option>Mañana (6am–2pm)</option><option>Tarde (2pm–10pm)</option>
+          <option>Noche (10pm–6am)</option><option>Completo (8h)</option>
+        </select></div>
+      </div>
+    </div>
+  </div>
+  <div class="stabs" id="stabs"></div>
+  <div id="prod-cont"><div class="empty"><div class="ic">⚙️</div>Selecciona un proyecto.</div></div>
+</div>
+
+<!-- PERFILES -->
+<div class="page" id="page-perfiles">
+  <div class="weld"></div>
+  <div class="row"><button class="btn bp" onclick="openPerfil()">＋ Nuevo perfil</button></div>
+  <div class="card"><div class="ch">🔧 Perfiles</div><div class="cb" id="t-perfiles"><div class="loading"><div class="spinner"></div>Cargando...</div></div></div>
+</div>
+
+<!-- EQUIPO -->
+<div class="page" id="page-equipo">
+  <div class="weld"></div>
+  <div class="row"><button class="btn bp" onclick="openSol()">＋ Nuevo soldador</button></div>
+  <div class="card"><div class="ch">👷 Equipo</div><div class="cb" id="t-equipo"><div class="loading"><div class="spinner"></div>Cargando...</div></div></div>
+</div>
+
+<!-- MODAL PROYECTO -->
+<div class="mo" id="mo-proy">
+<div class="md">
+  <!-- CABECERA FIJA -->
+  <div class="md-hdr">
+    <div class="mh">📁 <span id="mo-tit">Nuevo proyecto</span></div>
+  </div>
+  <!-- CUERPO CON SCROLL -->
+  <div class="md-scr">
+    <input type="hidden" id="eid">
+    <div class="sec">Tipo de proyecto</div>
+    <div class="tipo-sel">
+      <div class="tipo-opt sel-b" id="opt-b" onclick="setTipo('bodega')">
+        <span class="ic">🏗️</span>Bodega modular<br><small style="font-weight:400;color:var(--muted)">Con pórticos y medidas</small>
+      </div>
+      <div class="tipo-opt" id="opt-e" onclick="setTipo('especial')">
+        <span class="ic">⭐</span>Proyecto especial<br><small style="font-weight:400;color:var(--muted)">Cualquier otra estructura</small>
+      </div>
+    </div>
+    <input type="hidden" id="pj-tipo" value="bodega">
+    <div class="sec">Datos generales</div>
+    <div class="fr">
+      <div class="fg" style="grid-column:1/-1"><label>Nombre del proyecto</label>
+        <input type="text" id="pj-nom" placeholder="Ej: SLAI Bodega 25m — Cliente ABC"></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label>Código / PE</label><input type="text" id="pj-cod" placeholder="MPI-29"></div>
+      <div class="fg"><label>Fecha inicio</label><input type="date" id="pj-ini"></div>
+      <div class="fg"><label>Fecha entrega</label><input type="date" id="pj-ent"></div>
+    </div>
+    <div class="fg" style="margin-bottom:10px">
+      <label>Descripción del proyecto</label>
+      <textarea id="pj-desc" rows="2" placeholder="Cliente, ubicación, características especiales..."></textarea>
+    </div>
+    <div id="blk-med">
+      <div class="sec">Medidas generales</div>
+      <div class="fr">
+        <div class="fg"><label>Ancho (m)</label><div class="unit-wrap"><input type="number" id="pj-ancho" min="0" step="0.1" placeholder="0.0"><span class="unit-label">m</span></div></div>
+        <div class="fg"><label>Longitud (m)</label><div class="unit-wrap"><input type="number" id="pj-long" min="0" step="0.1" placeholder="0.0"><span class="unit-label">m</span></div></div>
+        <div class="fg"><label>Altura (m)</label><div class="unit-wrap"><input type="number" id="pj-alt" min="0" step="0.1" placeholder="0.0"><span class="unit-label">m</span></div></div>
+        <div class="fg"><label>N° pórticos</label><input type="number" id="pj-port" min="1" step="1" placeholder="0"></div>
+      </div>
+      <div id="area-calc" style="font-size:12px;color:var(--muted);background:#f6f8fa;border-radius:5px;padding:6px 10px;margin-bottom:10px;display:none">
+        📐 Área: <strong id="area-val">—</strong> m²
+      </div>
+    </div>
+    <div class="divider"></div>
+  </div>
+  <!-- SECCIÓN PIEZAS: ocupa todo el espacio restante -->
+  <div style="flex:1;min-height:0;display:flex;flex-direction:column;padding:0 22px;overflow:hidden">
+    <div class="sec" style="flex-shrink:0">Piezas del proyecto</div>
+    <div style="display:flex;gap:7px;align-items:center;margin-bottom:8px;flex-shrink:0">
+      <select id="add-cat" style="flex:1;padding:6px 9px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit"></select>
+      <button class="btn bg2 bsm" onclick="addPieza()">＋ Del catálogo</button>
+      <button class="btn bg2 bsm" onclick="addCustom()">＋ Pieza nueva</button>
+    </div>
+    <!-- ENCABEZADO COLUMNAS FIJO -->
+    <div style="display:grid;grid-template-columns:72px 1fr 120px 68px 70px 70px 34px;gap:6px;padding:6px 8px;background:var(--steel);border-radius:6px 6px 0 0;flex-shrink:0">
+      <span style="font-size:10px;font-weight:700;color:#fff">PLANO</span>
+      <span style="font-size:10px;font-weight:700;color:#fff">NOMBRE</span>
+      <span style="font-size:10px;font-weight:700;color:#fff">PERFIL</span>
+      <span style="font-size:10px;font-weight:700;color:#fff">CANT.</span>
+      <span style="font-size:10px;font-weight:700;color:#fff">LONG.(m)</span>
+      <span style="font-size:10px;font-weight:700;color:#fff">PESO(kg)</span>
+      <span></span>
+    </div>
+    <!-- LISTA: flex:1 para que tome el espacio restante y scrollee -->
+    <div style="border:1.5px solid var(--border);border-top:none;border-radius:0 0 8px 8px;flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden">
+      <div id="pj-piezas" style="flex:1;min-height:0;overflow-y:scroll;display:flex;flex-direction:column;gap:0;scrollbar-width:thin;scrollbar-color:var(--accent) #dde1e7"></div>
+      <div id="pj-tots" style="display:none;border-top:2px solid var(--accent);background:#f0f4f8;padding:8px 12px;font-size:12px;gap:16px;flex-wrap:wrap;flex-shrink:0"></div>
+    </div>
+  </div>
+  <!-- PIE FIJO -->
+  <div class="md-ftr">
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn bg2" onclick="closeM('mo-proy')">Cancelar</button>
+      <button class="btn bp" onclick="saveProy()">💾 Guardar proyecto</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- MODAL PERFIL -->
+<div class="mo" id="mo-perf">
+<div class="md" style="max-width:480px">
+  <div class="mh">🔧 Nuevo perfil</div>
+  <div class="fr">
+    <div class="fg"><label>Nombre</label><input type="text" id="pf-nom" placeholder="PTS 60×60×3mm"></div>
+    <div class="fg"><label>Tipo</label><select id="pf-tipo">
+      <option value="PHR">PHR cajón</option><option value="PTS">PTS tubo comercial</option><option value="OTRO">Otro</option>
+    </select></div>
+  </div>
+  <div class="fr">
+    <div class="fg"><label>Dimensiones</label><input type="text" id="pf-dims" placeholder="22×16×0.25cm"></div>
+    <div class="fg"><label>Rendimiento (m/hora)</label><input type="number" id="pf-rend" step="0.1" min="0" placeholder="3.5"></div>
+  </div>
+  <div class="fg"><label>Notas técnicas</label><textarea id="pf-notas" rows="2" placeholder="Parámetros MIG..."></textarea></div>
+  <div class="mf">
+    <button class="btn bg2" onclick="closeM('mo-perf')">Cancelar</button>
+    <button class="btn bp" onclick="savePerfil()">💾 Guardar</button>
+  </div>
+</div>
+</div>
+
+<!-- MODAL SOLDADOR -->
+<div class="mo" id="mo-sol">
+<div class="md" style="max-width:420px">
+  <div class="mh">👷 Nuevo soldador</div>
+  <div class="fr">
+    <div class="fg" style="grid-column:1/-1"><label>Nombre completo</label><input type="text" id="sl-nom"></div>
+  </div>
+  <div class="fr">
+    <div class="fg"><label>Emoji</label><select id="sl-em">
+      <option>🔴</option><option>🟠</option><option>⚪</option><option>🟤</option><option>🔶</option><option>⭐</option><option>🔷</option><option>💎</option>
+    </select></div>
+    <div class="fg"><label>Color</label><input type="color" id="sl-col" value="#8b3a3a" style="height:36px;padding:2px 4px;cursor:pointer"></div>
+  </div>
+  <div class="fg"><label>Especialidad</label><input type="text" id="sl-esp" placeholder="Soldadura MIG, encajonado PHR..."></div>
+  <div class="mf">
+    <button class="btn bg2" onclick="closeM('mo-sol')">Cancelar</button>
+    <button class="btn bp" onclick="saveSol()">💾 Guardar</button>
+  </div>
+</div>
+</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+import {
+  getFirestore, collection, doc, getDocs, setDoc, deleteDoc,
+  onSnapshot, query, orderBy, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+
+// ── FIREBASE CONFIG ──────────────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyAalSwhBUqh2DN006RxHDZKVm_7tgs4zmk",
+  authDomain: "plastextil-produccion.firebaseapp.com",
+  projectId: "plastextil-produccion",
+  storageBucket: "plastextil-produccion.firebasestorage.app",
+  messagingSenderId: "549300718249",
+  appId: "1:549300718249:web:07ffdd6015cbe6b7adf7b8"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// ── COLECCIONES ──────────────────────────────────────────────────────────────
+const COL = {
+  perfiles: 'perfiles',
+  soldadores: 'soldadores',
+  proyectos: 'proyectos',
+  registros: 'registros',
+};
+
+// ── ESTADO LOCAL (caché) ─────────────────────────────────────────────────────
+let perfiles = [], soldadores = [], proyectos = [], registros = [];
+let curSol = null, EP = [];
+
+// ── SYNC VISUAL ──────────────────────────────────────────────────────────────
+function syncStart(){ document.getElementById('sync-bar').className='sync-bar syncing'; }
+function syncOk(){
+  const b=document.getElementById('sync-bar');
+  b.className='sync-bar'; b.style.background='var(--green)'; b.style.opacity='1';
+  setTimeout(()=>b.style.opacity='0',800);
+}
+function syncErr(){ document.getElementById('sync-bar').className='sync-bar error'; }
+
+// ── DEFAULTS ─────────────────────────────────────────────────────────────────
+const DEFAULT_PERFILES = [
+  {id:'phr-2216',nombre:'PHR cajón 22×16×0.25cm',tipo:'PHR',dims:'22×16×0.25cm',rend:2.0,notas:'Requiere encajonamiento. MIG: 22-25V/140-170A/ER70S-6 Ø1.2mm'},
+  {id:'pts-1010',nombre:'PTS cuadrado 10×10×0.2cm',tipo:'PTS',dims:'10×10×0.2cm',rend:4.5,notas:'Tubo comercial. MIG: 18-20V/90-110A/Ø0.9mm'},
+  {id:'pts-0804',nombre:'PTS rectangular 8×4×0.2cm',tipo:'PTS',dims:'8×4×0.2cm',rend:5.0,notas:'Tubo comercial. MIG: 17-19V/85-105A/Ø0.9mm'},
+  {id:'pts-1005',nombre:'PTS rectangular 10×5×0.2cm',tipo:'PTS',dims:'10×5×0.2cm',rend:4.8,notas:'Tubo comercial. MIG: 18-20V/90-110A/Ø0.9mm'},
+];
+const DEFAULT_SOLDADORES = [
+  {id:'sol1',nombre:'Egar Acosta',    color:'#1e2d3d',light:'#d6e4f0',emoji:'🔵',esp:'Soldadura MIG estructural'},
+  {id:'sol2',nombre:'Daniel Palacios',color:'#2e7d52',light:'#e2efda',emoji:'🟢',esp:'Soldadura MIG estructural'},
+  {id:'sol3',nombre:'Nicolas Agudelo',color:'#7a5200',light:'#fff2cc',emoji:'🟡',esp:'Soldadura MIG estructural'},
+  {id:'sol4',nombre:'José Morillo',   color:'#3c3489',light:'#eeedfe',emoji:'🟣',esp:'Soldadura MIG estructural'},
+  {id:'sol5',nombre:'Yonathan Atencio',color:'#0f6e56',light:'#e1f5ee',emoji:'🟦',esp:'Soldadura MIG estructural'},
+  {id:'sol6',nombre:'Jesús',          color:'#8b1a1a',light:'#fde8e8',emoji:'🔴',esp:'Soldadura MIG estructural'},
+  {id:'sol7',nombre:'Jharlinson',     color:'#5a3a7a',light:'#ede8f8',emoji:'🟠',esp:'Soldadura MIG estructural'},
+];
+const CAT=[
+  {id:'A1',nom:'Paral de culata',pf:'phr-2216',enc:false},{id:'A2',nom:'Paral doble',pf:'phr-2216',enc:false},
+  {id:'A3',nom:'Hombro culata',pf:'phr-2216',enc:false},{id:'A4',nom:'Hombro doble',pf:'phr-2216',enc:false},
+  {id:'A6',nom:'Paral auxiliar 220×160',pf:'phr-2216',enc:false},{id:'A8',nom:'Bajante 220×160 tipo 1',pf:'phr-2216',enc:false},
+  {id:'D5',nom:'Bajante 220×160 tipo 2',pf:'phr-2216',enc:false},{id:'D8',nom:'Vértice culata frontal',pf:'phr-2216',enc:false},
+  {id:'D9',nom:'Vértice culata posterior',pf:'phr-2216',enc:false},{id:'D10',nom:'Diagonal auxiliar culata',pf:'phr-2216',enc:false},
+  {id:'D11',nom:'Vértice doble',pf:'phr-2216',enc:false},{id:'D12',nom:'Diagonal auxiliar doble',pf:'phr-2216',enc:false},
+  {id:'A5',nom:'Horizontal tipo 1',pf:'pts-1005',enc:false},{id:'A7',nom:'Paral auxiliar 100×100',pf:'pts-1010',enc:false},
+  {id:'A9',nom:'Tensor esquina culata',pf:'pts-0804',enc:false},{id:'A10',nom:'Tensor intermedio culata',pf:'pts-0804',enc:false},
+  {id:'A12',nom:'Correa tipo 1',pf:'pts-0804',enc:false},{id:'A13',nom:'Correa tipo 2',pf:'pts-1005',enc:false},
+  {id:'A14',nom:'Correa tipo 3',pf:'pts-1005',enc:false},{id:'D1',nom:'Bajante 100×100 tipo 1',pf:'pts-1010',enc:false},
+  {id:'D2',nom:'Bajante 100×100 tipo 2',pf:'pts-1010',enc:false},{id:'D3',nom:'Horizontal 100×50 tipo 1',pf:'pts-1005',enc:false},
+  {id:'D6',nom:'Horizontal 100×50 tipo 4',pf:'pts-1005',enc:false},{id:'D7',nom:'Horizontal 100×50 tipo 5',pf:'pts-1005',enc:false},
+  {id:'ENC-PAR',nom:'Encajonado PHR — Parales',pf:'phr-2216',enc:true},
+  {id:'ENC-HOM',nom:'Encajonado PHR — Hombros',pf:'phr-2216',enc:true},
+  {id:'ENC-VER',nom:'Encajonado PHR — Vértices',pf:'phr-2216',enc:true},
+  {id:'ENC-DIA',nom:'Encajonado PHR — Diagonales',pf:'phr-2216',enc:true},
+];
+
+// ── HELPERS ──────────────────────────────────────────────────────────────────
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function gPerf(id){ return perfiles.find(p=>p.id===id)||{nombre:'—',tipo:'?',rend:0,dims:''}; }
+function gSol(id){ return soldadores.find(s=>s.id===id)||soldadores[0]; }
+function gCat(id){ return CAT.find(c=>c.id===id)||{id,nom:id,pf:'phr-2216',enc:false}; }
+function pc(p){ return p>=1?'gn':p>=0.8?'am':'rd'; }
+function pb(p){ const pct=Math.round(p*100);const cl=p>=1?'bok':p>=0.8?'bwn':'ber';return`<span class="badge ${cl}">${pct}%</span>`; }
+function tt(t){ return t==='PHR'?'<span class="tag-phr">PHR</span>':t==='PTS'?'<span class="tag-pts">PTS</span>':'<span class="tag-enc">OTRO</span>'; }
+function lh(hex){ try{const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return`#${Math.round(r+(255-r)*.82).toString(16).padStart(2,'0')}${Math.round(g+(255-g)*.82).toString(16).padStart(2,'0')}${Math.round(b+(255-b)*.82).toString(16).padStart(2,'0')}`;} catch(e){return'#f0f0f0';} }
+function pfO(sel){ return perfiles.map(p=>`<option value="${p.id}"${p.id===sel?' selected':''}>${p.nombre}</option>`).join(''); }
+function getPP(pjId,plano){ return registros.filter(r=>r.proyId===pjId).reduce((a,r)=>a+(r.piezas?.[plano]||0),0); }
+function getPT(pjId){ return registros.filter(r=>r.proyId===pjId).reduce((a,r)=>a+Object.values(r.piezas||{}).reduce((x,y)=>x+y,0),0); }
+function getReg(pjId,f,sId){ return registros.find(r=>r.proyId===pjId&&r.fecha===f&&r.solId===sId)||{piezas:{}}; }
+
+// ── FIREBASE LISTENERS (tiempo real) ─────────────────────────────────────────
+async function initData(){
+  // Cargar y escuchar perfiles
+  onSnapshot(collection(db,'perfiles'), snap=>{
+    perfiles = snap.docs.map(d=>({id:d.id,...d.data()}));
+    if(perfiles.length===0) seedPerfiles();
+    rPerf(); rStabs();
+  });
+  // Cargar y escuchar soldadores
+  onSnapshot(collection(db,'soldadores'), snap=>{
+    soldadores = snap.docs.map(d=>({id:d.id,...d.data()}));
+    if(soldadores.length===0) seedSoldadores();
+    if(!curSol&&soldadores.length) curSol=soldadores[0].id;
+    rStabs(); rEq();
+    document.getElementById('k-sol').textContent=soldadores.length;
+  });
+  // Cargar y escuchar proyectos
+  onSnapshot(collection(db,'proyectos'), snap=>{
+    proyectos = snap.docs.map(d=>({id:d.id,...d.data()}));
+    rProy(); updPS(); rDash();
+    document.getElementById('pj-count').textContent=`${proyectos.length} proyecto${proyectos.length!==1?'s':''}`;
+  });
+  // Cargar y escuchar registros
+  onSnapshot(collection(db,'registros'), snap=>{
+    registros = snap.docs.map(d=>({id:d.id,...d.data()}));
+    rDash();
+  });
+}
+
+async function seedPerfiles(){
+  syncStart();
+  for(const p of DEFAULT_PERFILES){
+    await setDoc(doc(db,'perfiles',p.id),p);
+  }
+  syncOk();
+}
+async function seedSoldadores(){
+  syncStart();
+  for(const s of DEFAULT_SOLDADORES){
+    await setDoc(doc(db,'soldadores',s.id),s);
+  }
+  syncOk();
+}
+
+// ── FIREBASE WRITE ────────────────────────────────────────────────────────────
+async function fbSet(col,id,data){
+  syncStart();
+  try{ await setDoc(doc(db,col,id),data); syncOk(); }
+  catch(e){ syncErr(); console.error(e); }
+}
+async function fbDel(col,id){
+  syncStart();
+  try{ await deleteDoc(doc(db,col,id)); syncOk(); }
+  catch(e){ syncErr(); console.error(e); }
+}
+
+// ── NAV ──────────────────────────────────────────────────────────────────────
+window.go = function(id,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.ntb').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  if(btn) btn.classList.add('active');
+  if(id==='produccion'){rStabs();updPS();}
+};
+
+function initFecha(){
+  const d=new Date();
+  document.getElementById('nfecha').textContent=d.toLocaleDateString('es-CO',{weekday:'short',day:'numeric',month:'short'});
+  document.getElementById('p-fecha').value=d.toISOString().slice(0,10);
+}
+
+// ── TIPO ─────────────────────────────────────────────────────────────────────
+window.setTipo = function(t){
+  document.getElementById('pj-tipo').value=t;
+  document.getElementById('opt-b').className='tipo-opt'+(t==='bodega'?' sel-b':'');
+  document.getElementById('opt-e').className='tipo-opt'+(t==='especial'?' sel-e':'');
+  document.getElementById('blk-med').style.display=t==='bodega'?'block':'none';
+};
+function calcArea(){
+  const a=parseFloat(document.getElementById('pj-ancho').value)||0;
+  const l=parseFloat(document.getElementById('pj-long').value)||0;
+  const el=document.getElementById('area-calc');
+  if(a>0&&l>0){document.getElementById('area-val').textContent=(a*l).toFixed(1);el.style.display='block';}
+  else el.style.display='none';
+}
+document.getElementById('pj-ancho').addEventListener('input',calcArea);
+document.getElementById('pj-long').addEventListener('input',calcArea);
+
+// ── PIEZAS MODAL ─────────────────────────────────────────────────────────────
+function rPiezas(){
+  const el=document.getElementById('pj-piezas');
+  if(!EP.length){el.innerHTML='<div style="color:var(--muted);font-size:12px;padding:7px">Agrega piezas del catálogo o crea una nueva.</div>';updTots();return;}
+  el.innerHTML=EP.map((p,i)=>`
+    <div class="prow${p.enc?' enc':''}">
+      <div class="prow-main">
+        <input type="text" value="${p.plano||''}" placeholder="Plano" onchange="upP(${i},'plano',this.value)" style="font-weight:700${p.enc?';color:var(--amber)':''}">
+        <input type="text" value="${p.nom||''}" placeholder="Nombre pieza" onchange="upP(${i},'nom',this.value)">
+        <select onchange="upP(${i},'perfilId',this.value)">${pfO(p.perfilId)}</select>
+        <input type="number" min="0" value="${p.cant||0}" onchange="upP(${i},'cant',parseInt(this.value)||0)">
+        <input type="number" min="0" step="0.01" value="${p.long||''}" placeholder="0.00" onchange="upP(${i},'long',parseFloat(this.value)||0)">
+        <input type="number" min="0" step="0.01" value="${p.peso||''}" placeholder="0.00" onchange="upP(${i},'peso',parseFloat(this.value)||0)">
+        <button class="btn bd2 bsm" onclick="rmP(${i})">✕</button>
+      </div>
+      <div style="display:flex;gap:10px;padding:2px 9px 5px;font-size:10px;color:var(--muted);flex-wrap:wrap">
+        <span>${tt(gPerf(p.perfilId).tipo)} ${gPerf(p.perfilId).dims||''} · <strong>${gPerf(p.perfilId).rend}</strong> m/h</span>
+        ${p.long&&p.cant?`<span>📏 ${(p.long*p.cant).toFixed(2)} m total</span>`:''}
+        ${p.peso&&p.cant?`<span>⚖️ ${(p.peso*p.cant).toFixed(2)} kg total</span>`:''}
+        ${p.enc?'<span class="tag-enc">ENCAJONADO PHR</span>':''}
+      </div>
+    </div>`).join('');
+  updTots();
+}
+function updTots(){
+  const el=document.getElementById('pj-tots');
+  if(!EP.length){el.style.display='none';return;}
+  el.style.display='flex';
+  el.innerHTML=`<span>📦 <strong>${EP.length}</strong> tipos</span>
+    <span>🔢 <strong>${EP.reduce((a,p)=>a+p.cant,0)}</strong> unidades</span>
+    ${EP.reduce((a,p)=>a+(p.long||0)*p.cant,0)>0?`<span>📏 <strong>${EP.reduce((a,p)=>a+(p.long||0)*p.cant,0).toFixed(2)} m</strong></span>`:''}
+    ${EP.reduce((a,p)=>a+(p.peso||0)*p.cant,0)>0?`<span>⚖️ <strong>${EP.reduce((a,p)=>a+(p.peso||0)*p.cant,0).toFixed(2)} kg</strong></span>`:''}`;
+}
+window.upP = (i,f,v)=>{ EP[i][f]=v; rPiezas(); };
+window.rmP = (i)=>{ EP.splice(i,1); rPiezas(); };
+window.addPieza = function(){
+  const id=document.getElementById('add-cat').value; if(!id)return;
+  if(EP.find(p=>p.plano===id)){alert('Esta pieza ya está.');return;}
+  const c=gCat(id);
+  EP.push({plano:c.id,nom:c.nom,perfilId:c.pf,cant:1,long:0,peso:0,enc:c.enc});
+  rPiezas();
+};
+window.addCustom = function(){
+  EP.push({plano:'',nom:'Nueva pieza',perfilId:perfiles[0]?.id||'phr-2216',cant:1,long:0,peso:0,enc:false});
+  rPiezas();
+  const el=document.getElementById('pj-piezas');
+  setTimeout(()=>el.scrollTop=el.scrollHeight,50);
+};
+function populateCat(){
+  document.getElementById('add-cat').innerHTML=
+    `<option value="">— Seleccionar del catálogo —</option>`+
+    CAT.map(c=>`<option value="${c.id}">${c.id} — ${c.nom}${c.enc?' (ENC)':''}</option>`).join('');
+}
+
+// ── PROYECTOS ─────────────────────────────────────────────────────────────────
+window.openProj = function(id=null){
+  EP=[];
+  document.getElementById('eid').value='';
+  document.getElementById('mo-tit').textContent='Nuevo proyecto';
+  ['pj-nom','pj-cod','pj-desc'].forEach(x=>document.getElementById(x).value='');
+  ['pj-ancho','pj-long','pj-alt','pj-port'].forEach(x=>document.getElementById(x).value='');
+  document.getElementById('pj-ini').value=new Date().toISOString().slice(0,10);
+  document.getElementById('pj-ent').value='';
+  document.getElementById('area-calc').style.display='none';
+  setTipo('bodega');
+  if(id){
+    const p=proyectos.find(x=>x.id===id);
+    if(p){
+      document.getElementById('eid').value=p.id;
+      document.getElementById('mo-tit').textContent='Editar proyecto';
+      document.getElementById('pj-nom').value=p.nom||'';
+      document.getElementById('pj-cod').value=p.cod||'';
+      document.getElementById('pj-ini').value=p.ini||'';
+      document.getElementById('pj-ent').value=p.ent||'';
+      document.getElementById('pj-desc').value=p.desc||'';
+      document.getElementById('pj-ancho').value=p.ancho||'';
+      document.getElementById('pj-long').value=p.longitud||'';
+      document.getElementById('pj-alt').value=p.altura||'';
+      document.getElementById('pj-port').value=p.porticos||'';
+      setTipo(p.tipo||'bodega');
+      EP=JSON.parse(JSON.stringify(p.piezas||[]));
+      calcArea();
+    }
+  }
+  populateCat(); rPiezas();
+  document.getElementById('mo-proy').classList.add('open');
+};
+
+window.saveProy = async function(){
+  const nom=document.getElementById('pj-nom').value.trim();
+  if(!nom){alert('Ingresa el nombre del proyecto.');return;}
+  if(!EP.length){alert('Agrega al menos una pieza.');return;}
+  const eid=document.getElementById('eid').value;
+  const tipo=document.getElementById('pj-tipo').value;
+  const ancho=parseFloat(document.getElementById('pj-ancho').value)||0;
+  const longitud=parseFloat(document.getElementById('pj-long').value)||0;
+  const id=eid||uid();
+  const p={
+    nom, cod:document.getElementById('pj-cod').value.trim(),
+    ini:document.getElementById('pj-ini').value, ent:document.getElementById('pj-ent').value,
+    desc:document.getElementById('pj-desc').value.trim(),
+    tipo, ancho:tipo==='bodega'?ancho:0, longitud:tipo==='bodega'?longitud:0,
+    altura:tipo==='bodega'?(parseFloat(document.getElementById('pj-alt').value)||0):0,
+    porticos:tipo==='bodega'?(parseInt(document.getElementById('pj-port').value)||0):0,
+    area:tipo==='bodega'&&ancho&&longitud?ancho*longitud:0,
+    piezas:JSON.parse(JSON.stringify(EP)), estado:'activo',
+  };
+  await fbSet('proyectos',id,p);
+  closeM('mo-proy');
+};
+
+window.delPj = async function(id){
+  if(!confirm('¿Eliminar este proyecto y sus registros?'))return;
+  await fbDel('proyectos',id);
+  const regsToDelete=registros.filter(r=>r.proyId===id);
+  for(const r of regsToDelete) await fbDel('registros',r.id);
+};
+
+window.togPj = function(id){
+  const el=document.getElementById('pjb-'+id);
+  if(el)el.style.display=el.style.display==='none'?'block':'none';
+};
+
+function rProy(){
+  const el=document.getElementById('lista-proy');
+  if(!proyectos.length){el.innerHTML='<div class="empty"><div class="ic">📁</div>No hay proyectos aún.</div>';return;}
+  el.innerHTML=proyectos.map(pj=>{
+    const total=pj.piezas?.reduce((a,p)=>a+p.cant,0)||0;
+    const prod=getPT(pj.id); const pct=total>0?prod/total:0;
+    const pesototal=pj.piezas?.reduce((a,p)=>a+(p.peso||0)*p.cant,0)||0;
+    const esB=pj.tipo!=='especial';
+    return `<div class="pjc">
+      <div class="pjch" onclick="togPj('${pj.id}')">
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:2px">
+            <strong style="font-size:14px">${pj.nom}</strong>
+            <span class="chip">${pj.cod||''}</span>
+            <span class="${esB?'tipo-bodega':'tipo-especial'}">${esB?'🏗️ Bodega':'⭐ Especial'}</span>
+          </div>
+          <div style="font-size:11px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap">
+            ${pj.ancho?`<span>📐 ${pj.ancho}×${pj.longitud}×${pj.altura}m</span>`:''}
+            ${pj.porticos?`<span>🏗️ ${pj.porticos} pórticos</span>`:''}
+            ${pj.area?`<span>📏 ${pj.area.toFixed(0)} m²</span>`:''}
+            ${pesototal?`<span>⚖️ ${pesototal.toFixed(0)} kg</span>`:''}
+            <span>Entrega: ${pj.ent||'—'}</span>
+            <span>${pj.piezas?.length||0} tipos · ${total} und</span>
+          </div>
+        </div>
+        <div style="width:135px;margin:0 10px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+            <span style="font-size:10px;color:var(--muted)">Avance</span><strong style="font-size:11px">${prod}/${total}</strong>
+          </div>
+          <div class="pw"><div class="pb ${pc(pct)}" style="width:${Math.min(pct*100,100)}%"></div></div>
+        </div>
+        ${pb(pct)}
+        <button class="btn bg2 bsm" onclick="event.stopPropagation();openProj('${pj.id}')">✏️</button>
+        <button class="btn bd2 bsm" onclick="event.stopPropagation();delPj('${pj.id}')">🗑</button>
+      </div>
+      <div id="pjb-${pj.id}" style="display:none" class="pjcb">
+        ${pj.desc?`<div class="desc-box"><div class="dl">Descripción</div>${pj.desc}</div>`:''}
+        ${esB&&pj.ancho?`<div class="medidas-box">
+          ${pj.ancho?`<div class="mfield"><label>Ancho</label><div class="mv">${pj.ancho}</div><div class="mu">m</div></div>`:''}
+          ${pj.longitud?`<div class="mfield"><label>Longitud</label><div class="mv">${pj.longitud}</div><div class="mu">m</div></div>`:''}
+          ${pj.altura?`<div class="mfield"><label>Altura</label><div class="mv">${pj.altura}</div><div class="mu">m</div></div>`:''}
+          ${pj.porticos?`<div class="mfield"><label>Pórticos</label><div class="mv">${pj.porticos}</div><div class="mu">und</div></div>`:''}
+          ${pj.area?`<div class="mfield"><label>Área</label><div class="mv">${pj.area.toFixed(1)}</div><div class="mu">m²</div></div>`:''}
+          ${pesototal?`<div class="mfield"><label>Peso total</label><div class="mv">${pesototal.toFixed(1)}</div><div class="mu">kg</div></div>`:''}
+        </div>`:''}
+        <table class="tbl">
+          <thead><tr><th>Plano</th><th>Pieza</th><th>Perfil</th><th>Rend.</th><th>Long.u.</th><th>Peso u.</th><th>Cant.</th><th>Long.tot.</th><th>Peso tot.</th><th>Producido</th><th>Avance</th></tr></thead>
+          <tbody>${(pj.piezas||[]).map(p=>{
+            const perf=gPerf(p.perfilId);const prod2=getPP(pj.id,p.plano);const pp=p.cant>0?prod2/p.cant:0;
+            return `<tr ${p.enc?'style="background:#fff8ee"':''}>
+              <td><strong>${p.plano}</strong></td><td>${p.nom} ${p.enc?'<span class="tag-enc">ENC</span>':''}</td>
+              <td>${tt(perf.tipo)} <span style="font-size:10px">${perf.dims||''}</span></td>
+              <td style="text-align:center"><strong>${perf.rend}</strong><span style="font-size:10px;color:var(--muted)"> m/h</span></td>
+              <td style="text-align:right">${p.long?p.long.toFixed(2)+' m':'—'}</td>
+              <td style="text-align:right">${p.peso?p.peso.toFixed(2)+' kg':'—'}</td>
+              <td style="text-align:center"><strong>${p.cant}</strong></td>
+              <td style="text-align:right">${p.long&&p.cant?(p.long*p.cant).toFixed(2)+' m':'—'}</td>
+              <td style="text-align:right">${p.peso&&p.cant?(p.peso*p.cant).toFixed(2)+' kg':'—'}</td>
+              <td style="text-align:center;font-weight:700;color:var(--${pc(pp)})">${prod2}</td>
+              <td><div class="pw"><div class="pb ${pc(pp)}" style="width:${Math.min(pp*100,100)}%"></div></div>
+                <div style="font-size:10px;color:var(--muted);text-align:right">${Math.round(pp*100)}%</div></td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── PRODUCCIÓN ────────────────────────────────────────────────────────────────
+function updPS(){
+  const sel=document.getElementById('p-proy');const cur=sel.value;
+  sel.innerHTML='<option value="">— Seleccionar proyecto —</option>'+
+    proyectos.map(p=>`<option value="${p.id}"${p.id===cur?' selected':''}>${p.nom} (${p.cod||p.id})</option>`).join('');
+}
+function rStabs(){
+  if(!soldadores.length)return;
+  if(!curSol)curSol=soldadores[0].id;
+  document.getElementById('stabs').innerHTML=soldadores.map(s=>`
+    <button class="stab${s.id===curSol?' active':''}"
+      style="${s.id===curSol?`background:${s.color};border-color:${s.color};color:#fff`:`border-color:${s.color};color:${s.color}`}"
+      onclick="selSol('${s.id}')">${s.emoji} ${s.nombre.split(' ')[0]}</button>`).join('');
+}
+window.selSol = function(id){ curSol=id; rStabs(); loadProd(); };
+window.loadProd = function(){
+  const pjId=document.getElementById('p-proy').value;
+  const fecha=document.getElementById('p-fecha').value;
+  const el=document.getElementById('prod-cont');
+  if(!pjId){el.innerHTML='<div class="empty"><div class="ic">⚙️</div>Selecciona un proyecto.</div>';return;}
+  const pj=proyectos.find(p=>p.id===pjId); if(!pj)return;
+  const sol=gSol(curSol); const reg=getReg(pjId,fecha,curSol);
+  el.innerHTML=`<div class="card">
+    <div class="ch" style="background:${sol.color};color:#fff;border-radius:7px 7px 0 0">
+      ${sol.emoji} ${sol.nombre} — ${fecha?new Date(fecha+'T12:00').toLocaleDateString('es-CO',{weekday:'long',day:'numeric',month:'long'}):'—'}
+    </div>
+    <div class="cb">
+      <div style="display:grid;grid-template-columns:68px 1fr 95px 75px 85px 72px;gap:7px;padding:0 4px 7px;border-bottom:1px solid var(--border);margin-bottom:7px">
+        <span style="font-size:10px;font-weight:700;color:var(--muted)">PLANO</span>
+        <span style="font-size:10px;font-weight:700;color:var(--muted)">PIEZA</span>
+        <span style="font-size:10px;font-weight:700;color:var(--muted)">PERFIL</span>
+        <span style="font-size:10px;font-weight:700;color:var(--muted);text-align:center">ACUM.</span>
+        <span style="font-size:10px;font-weight:700;color:var(--muted);text-align:center">HOY</span>
+        <span style="font-size:10px;font-weight:700;color:var(--muted);text-align:center">%</span>
+      </div>
+      <div class="dg">${(pj.piezas||[]).map(p=>{
+        const perf=gPerf(p.perfilId);const hoy=reg.piezas?.[p.plano]||0;
+        const acum=getPP(pjId,p.plano);const meta=Math.max(1,Math.round(p.cant/20));
+        const pct=meta>0?hoy/meta:0;
+        const ps=hoy>0?(pct>=1?'background:var(--green-lt);color:var(--green)':pct>=0.8?'background:var(--amber-lt);color:var(--amber)':'background:var(--red-lt);color:var(--red)'):'background:var(--bg);color:var(--muted)';
+        return `<div class="dr${p.enc?' enc':''}">
+          <span style="font-size:11px;font-weight:700;color:var(--steel-md)">${p.plano}</span>
+          <div>
+            <div style="font-size:11px;font-weight:${p.enc?700:400}">${p.nom}</div>
+            <div style="font-size:10px;color:var(--muted)">${tt(perf.tipo)} ${perf.dims||''} · ${perf.rend}m/h
+              ${p.long?`· <strong>${p.long}m</strong>`:''} ${p.peso?`· <strong>${p.peso}kg</strong>`:''}
+            </div>
+          </div>
+          <div style="font-size:10px;color:var(--muted);text-align:center">Meta: <strong>${p.cant}</strong><br>
+            <strong style="color:var(--${pc(p.cant>0?acum/p.cant:0)})">${acum} acum.</strong></div>
+          <div style="text-align:center;font-size:10px;color:var(--muted)">Suger.<br><strong>${meta}</strong></div>
+          <input type="number" min="0" value="${hoy}" id="inp-${pjId}-${p.plano.replace(/[^a-zA-Z0-9]/g,'-')}"
+            onchange="upReg('${pjId}','${fecha}','${curSol}','${p.plano}',parseInt(this.value)||0)"
+            style="background:${p.enc?'#fff8ee':'#fff'}">
+          <span class="dpct" style="${ps}">${hoy>0?Math.round(pct*100)+'%':'—'}</span>
+        </div>`;
+      }).join('')}</div>
+      <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+        <span style="font-size:11px;color:var(--green)" id="sstatus"></span>
+      </div>
+    </div>
+  </div>`;
+};
+
+window.upReg = async function(pjId,fecha,solId,plano,val){
+  const regId=`${pjId}_${fecha}_${solId}`;
+  let existing=registros.find(r=>r.id===regId);
+  const piezas=existing?{...existing.piezas}:{};
+  piezas[plano]=val;
+  await fbSet('registros',regId,{id:regId,proyId:pjId,fecha,solId,piezas});
+  const tot=Object.values(piezas).reduce((a,b)=>a+b,0);
+  const el=document.getElementById('sstatus');
+  if(el){el.textContent=`✓ Guardado — Total turno: ${tot} und`;setTimeout(()=>{if(el)el.textContent='';},3000);}
+};
+
+// ── PERFILES ──────────────────────────────────────────────────────────────────
+function rPerf(){
+  const el=document.getElementById('t-perfiles');
+  if(!el)return;
+  if(!perfiles.length){el.innerHTML='<div class="empty"><div class="ic">🔧</div>No hay perfiles.</div>';return;}
+  el.innerHTML=`<table class="tbl">
+    <thead><tr><th>Perfil</th><th>Tipo</th><th>Dims.</th><th>Rend.</th><th>Notas</th><th></th></tr></thead>
+    <tbody>${perfiles.map(p=>`<tr><td><strong>${p.nombre}</strong></td><td>${tt(p.tipo)}</td>
+      <td><code style="font-size:11px">${p.dims||'—'}</code></td>
+      <td><strong>${p.rend}</strong><span style="font-size:10px;color:var(--muted)"> m/h</span></td>
+      <td style="font-size:11px;color:var(--muted)">${p.notas||'—'}</td>
+      <td><button class="btn bd2 bsm" onclick="delPerf('${p.id}')">🗑</button></td>
+    </tr>`).join('')}</tbody></table>`;
+}
+window.openPerfil = function(){
+  ['pf-nom','pf-dims','pf-notas'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('pf-tipo').value='PTS';document.getElementById('pf-rend').value='';
+  document.getElementById('mo-perf').classList.add('open');
+};
+window.savePerfil = async function(){
+  const nom=document.getElementById('pf-nom').value.trim();if(!nom){alert('Ingresa el nombre.');return;}
+  const id=uid();
+  await fbSet('perfiles',id,{id,nombre:nom,tipo:document.getElementById('pf-tipo').value,
+    dims:document.getElementById('pf-dims').value.trim(),
+    rend:parseFloat(document.getElementById('pf-rend').value)||0,
+    notas:document.getElementById('pf-notas').value.trim()});
+  closeM('mo-perf');
+};
+window.delPerf = async function(id){
+  if(!confirm('¿Eliminar este perfil?'))return;
+  await fbDel('perfiles',id);
+};
+
+// ── EQUIPO ────────────────────────────────────────────────────────────────────
+function rEq(){
+  const el=document.getElementById('t-equipo');if(!el)return;
+  if(!soldadores.length){el.innerHTML='<div class="empty"><div class="ic">👷</div>No hay soldadores.</div>';return;}
+  el.innerHTML=`<table class="tbl">
+    <thead><tr><th>Soldador</th><th>Especialidad</th><th>Registros</th><th></th></tr></thead>
+    <tbody>${soldadores.map(s=>`<tr>
+      <td><span style="display:inline-flex;align-items:center;gap:8px">
+        <span style="width:26px;height:26px;border-radius:50%;background:${s.color};display:flex;align-items:center;justify-content:center;font-size:12px">${s.emoji}</span>
+        <strong>${s.nombre}</strong></span></td>
+      <td style="font-size:11px;color:var(--muted)">${s.esp||'—'}</td>
+      <td style="text-align:center"><span class="chip">${registros.filter(r=>r.solId===s.id).length} reg.</span></td>
+      <td><button class="btn bd2 bsm" onclick="delSol('${s.id}')">🗑</button></td>
+    </tr>`).join('')}</tbody></table>`;
+}
+window.openSol = function(){
+  ['sl-nom','sl-esp'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('sl-col').value='#8b3a3a';
+  document.getElementById('mo-sol').classList.add('open');
+};
+window.saveSol = async function(){
+  const nom=document.getElementById('sl-nom').value.trim();if(!nom){alert('Ingresa el nombre.');return;}
+  const col=document.getElementById('sl-col').value;const id=uid();
+  await fbSet('soldadores',id,{id,nombre:nom,color:col,light:lh(col),
+    emoji:document.getElementById('sl-em').value,esp:document.getElementById('sl-esp').value.trim()});
+  closeM('mo-sol');
+};
+window.delSol = async function(id){
+  if(!confirm('¿Eliminar soldador?'))return;
+  await fbDel('soldadores',id);
+  if(curSol===id)curSol=soldadores.find(s=>s.id!==id)?.id;
+};
+
+// ── DASHBOARD ─────────────────────────────────────────────────────────────────
+function rDash(){
+  document.getElementById('k-proy').textContent=proyectos.filter(p=>p.estado==='activo').length;
+  const hoy=new Date();
+  const lun=new Date(hoy);lun.setDate(hoy.getDate()-((hoy.getDay()+6)%7));
+  const lStr=lun.toISOString().slice(0,10);
+  const sab=new Date(lun);sab.setDate(lun.getDate()+5);
+  const sStr=sab.toISOString().slice(0,10);
+  const rS=registros.filter(r=>r.fecha>=lStr&&r.fecha<=sStr);
+  document.getElementById('k-und').textContent=rS.reduce((a,r)=>a+Object.values(r.piezas||{}).reduce((x,y)=>x+y,0),0);
+  const encIds=['ENC-PAR','ENC-HOM','ENC-VER','ENC-DIA'];
+  document.getElementById('k-enc').textContent=rS.reduce((a,r)=>a+encIds.reduce((x,id)=>x+(r.piezas?.[id]||0),0),0);
+  if(proyectos.length){
+    const pcts=proyectos.map(p=>{const tot=(p.piezas||[]).reduce((a,x)=>a+x.cant,0);return tot>0?getPT(p.id)/tot:0;});
+    document.getElementById('k-cumpl').textContent=Math.round(pcts.reduce((a,b)=>a+b,0)/pcts.length*100)+'%';
+  }
+  const pesoT=proyectos.reduce((a,p)=>a+(p.piezas||[]).reduce((b,x)=>b+(x.peso||0)*x.cant,0),0);
+  document.getElementById('k-peso').textContent=pesoT>0?pesoT.toFixed(0)+' kg':'—';
+
+  const dP=document.getElementById('d-proy');
+  dP.innerHTML=proyectos.length?proyectos.map(pj=>{
+    const total=(pj.piezas||[]).reduce((a,p)=>a+p.cant,0);
+    const prod=getPT(pj.id);const pct=total>0?prod/total:0;const esB=pj.tipo!=='especial';
+    return `<div style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;flex-wrap:wrap;gap:6px">
+        <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+          <strong>${pj.nom}</strong><span class="chip">${pj.cod||''}</span>
+          <span class="${esB?'tipo-bodega':'tipo-especial'}">${esB?'🏗️ Bodega':'⭐ Especial'}</span>
+          ${pj.ancho?`<span class="chip">📐${pj.ancho}×${pj.longitud}m</span>`:''}
+          ${pj.porticos?`<span class="chip">🏗️${pj.porticos}p</span>`:''}
+        </div>
+        <span style="font-size:12px;font-weight:700;color:var(--${pc(pct)})">${prod}/${total}</span>
+      </div>
+      ${pj.desc?`<div style="font-size:11px;color:var(--amber);font-style:italic;margin-bottom:3px">📝 ${pj.desc.slice(0,80)}${pj.desc.length>80?'…':''}</div>`:''}
+      <div class="pw"><div class="pb ${pc(pct)}" style="width:${Math.min(pct*100,100)}%"></div></div>
+      <div style="font-size:10px;color:var(--muted);margin-top:2px">Entrega: ${pj.ent||'—'} · ${Math.round(pct*100)}% completado</div>
+    </div>`;
+  }).join(''):'<div class="empty"><div class="ic">📋</div>Crea un proyecto.</div>';
+
+  const maxP=Math.max(1,...soldadores.map(s=>rS.filter(r=>r.solId===s.id).reduce((a,r)=>a+Object.values(r.piezas||{}).reduce((x,y)=>x+y,0),0)));
+  const DL=['Lun','Mar','Mié','Jue','Vie','Sáb'];
+  document.getElementById('d-sol').innerHTML=soldadores.length?`<table class="tbl"><thead><tr>
+    <th>Soldador</th>${DL.map(d=>`<th>${d}</th>`).join('')}<th>Total sem.</th>
+  </tr></thead><tbody>${soldadores.map(s=>{
+    const dias=[];
+    for(let i=0;i<6;i++){const d=new Date(lun);d.setDate(lun.getDate()+i);const ds=d.toISOString().slice(0,10);
+      dias.push(registros.filter(r=>r.solId===s.id&&r.fecha===ds).reduce((a,r)=>a+Object.values(r.piezas||{}).reduce((x,y)=>x+y,0),0));}
+    const tot=dias.reduce((a,b)=>a+b,0);
+    return `<tr>
+      <td><span style="display:inline-flex;align-items:center;gap:6px">
+        <span style="width:20px;height:20px;border-radius:50%;background:${s.color};display:flex;align-items:center;justify-content:center;font-size:11px">${s.emoji}</span>
+        <strong>${s.nombre}</strong></span></td>
+      ${dias.map(d=>`<td style="text-align:center;color:${d>0?'var(--text)':'var(--muted)'}">${d>0?d:'—'}</td>`).join('')}
+      <td><div style="display:flex;align-items:center;gap:6px">
+        <div class="pw" style="flex:1;height:5px"><div class="pb ac" style="width:${(tot/maxP)*100}%"></div></div>
+        <strong style="font-size:12px;color:var(--accent)">${tot}</strong>
+      </div></td></tr>`;
+  }).join('')}</tbody></table>`:'<div class="empty"><div class="ic">👷</div>No hay soldadores.</div>';
+}
+
+// ── MODAL HELPERS ─────────────────────────────────────────────────────────────
+window.closeM = function(id){ document.getElementById(id).classList.remove('open'); };
+document.querySelectorAll('.mo').forEach(m=>{
+  m.addEventListener('click',e=>{ if(e.target===m) m.classList.remove('open'); });
+});
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+initFecha();
+initData();
+</script>
+</body>
+</html>
