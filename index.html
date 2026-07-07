@@ -149,6 +149,17 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 .loading{display:flex;align-items:center;justify-content:center;gap:8px;padding:20px;color:var(--muted);font-size:13px}
 .spinner{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+/* PRODUCCIÓN DÍA */
+.turno-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:14px;overflow:hidden}
+.turno-header{padding:12px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.turno-badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:4px 10px;border-radius:12px;background:var(--green-lt);color:var(--green)}
+.turno-badge.pendiente{background:var(--amber-lt);color:var(--amber)}
+.turno-badge.guardado{background:var(--green-lt);color:var(--green)}
+.add-turno-btn{border:2px dashed var(--border);border-radius:var(--radius);padding:14px;text-align:center;cursor:pointer;color:var(--muted);font-size:13px;transition:all .15s;background:transparent;width:100%;font-family:inherit}
+.add-turno-btn:hover{border-color:var(--accent);color:var(--accent);background:#fff8f4}
+.resumen-dia{background:var(--steel);color:#fff;border-radius:var(--radius);padding:14px 18px;margin-bottom:14px}
+.resumen-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.1);font-size:12px}
+.resumen-row:last-child{border-bottom:none}
 </style>
 </head>
 <body>
@@ -195,20 +206,22 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 <!-- PRODUCCIÓN -->
 <div class="page" id="page-produccion">
   <div class="weld"></div>
+  <!-- Selector de fecha y soldador -->
   <div class="card">
-    <div class="ch">📅 Configurar registro</div>
+    <div class="ch">📅 Seleccionar fecha y soldador</div>
     <div class="cb">
-      <div class="fr">
-        <div class="fg"><label>Fecha</label><input type="date" id="p-fecha"></div>
-        <div class="fg"><label>Proyecto</label><select id="p-proy" onchange="loadProd()"><option value="">— Seleccionar —</option></select></div>
-        <div class="fg"><label>Hora inicio</label><input type="time" id="p-hinicio" value="06:00"></div>
-        <div class="fg"><label>Hora fin</label><input type="time" id="p-hfin" value="14:00"></div>
-        <div class="fg"><label>Duración</label><div id="p-duracion" style="border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-size:13px;background:#f6f8fa;color:var(--muted);font-weight:600">8h 00min</div></div>
+      <div class="fr" style="align-items:flex-end">
+        <div class="fg"><label>Fecha</label><input type="date" id="p-fecha" onchange="rDiaSoldador()"></div>
+        <div class="fg" style="flex:2"><label>Soldador</label>
+          <div class="stabs" id="stabs" style="margin:0"></div>
+        </div>
       </div>
     </div>
   </div>
-  <div class="stabs" id="stabs"></div>
-  <div id="prod-cont"><div class="empty"><div class="ic">⚙️</div>Selecciona un proyecto.</div></div>
+  <!-- Vista del día completo del soldador -->
+  <div id="prod-dia">
+    <div class="empty"><div class="ic">👷</div>Selecciona un soldador para ver su día.</div>
+  </div>
 </div>
 
 <!-- PERFILES -->
@@ -455,6 +468,10 @@ async function initData(){
   onSnapshot(collection(db,'registros'), snap=>{
     registros = snap.docs.map(d=>({id:d.id,...d.data()}));
     rDash();
+    // Actualizar vista de producción si está activa
+    if(document.getElementById('page-produccion')?.classList.contains('active')){
+      rDiaSoldador();
+    }
   });
 }
 
@@ -491,31 +508,13 @@ window.go = function(id,btn){
   document.querySelectorAll('.ntb').forEach(b=>b.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
   if(btn) btn.classList.add('active');
-  if(id==='produccion'){rStabs();updPS();}
+  if(id==='produccion'){rStabs();rDiaSoldador();}
 };
 
 function initFecha(){
   const d=new Date();
   document.getElementById('nfecha').textContent=d.toLocaleDateString('es-CO',{weekday:'short',day:'numeric',month:'short'});
   document.getElementById('p-fecha').value=d.toISOString().slice(0,10);
-  // Calcular duración al cambiar horas
-  function calcDur(){
-    const hi=document.getElementById('p-hinicio').value;
-    const hf=document.getElementById('p-hfin').value;
-    const el=document.getElementById('p-duracion');
-    if(!hi||!hf){el.textContent='—';return;}
-    const [hhi,mmi]=hi.split(':').map(Number);
-    const [hhf,mmf]=hf.split(':').map(Number);
-    let mins=(hhf*60+mmf)-(hhi*60+mmi);
-    if(mins<0)mins+=24*60; // turno nocturno
-    const h=Math.floor(mins/60);
-    const m=mins%60;
-    el.textContent=`${h}h ${m.toString().padStart(2,'0')}min`;
-    el.style.color=mins>0?'var(--green)':'var(--red)';
-  }
-  document.getElementById('p-hinicio').addEventListener('change',calcDur);
-  document.getElementById('p-hfin').addEventListener('change',calcDur);
-  calcDur();
 }
 
 // ── TIPO ─────────────────────────────────────────────────────────────────────
@@ -728,71 +727,237 @@ function rProy(){
 }
 
 // ── PRODUCCIÓN ────────────────────────────────────────────────────────────────
-function updPS(){
-  const sel=document.getElementById('p-proy');const cur=sel.value;
-  sel.innerHTML='<option value="">— Seleccionar proyecto —</option>'+
-    proyectos.map(p=>`<option value="${p.id}"${p.id===cur?' selected':''}>${p.nom} (${p.cod||p.id})</option>`).join('');
-}
+function updPS(){ /* no usado en nueva UI */ }
+
 function rStabs(){
   if(!soldadores.length)return;
   if(!curSol)curSol=soldadores[0].id;
-  document.getElementById('stabs').innerHTML=soldadores.map(s=>`
+  const el=document.getElementById('stabs'); if(!el)return;
+  el.innerHTML=soldadores.map(s=>`
     <button class="stab${s.id===curSol?' active':''}"
       style="${s.id===curSol?`background:${s.color};border-color:${s.color};color:#fff`:`border-color:${s.color};color:${s.color}`}"
       onclick="selSol('${s.id}')">${s.emoji} ${s.nombre.split(' ')[0]}</button>`).join('');
 }
-window.selSol = function(id){ curSol=id; rStabs(); loadProd(); };
-window.loadProd = function(){
-  const pjId=document.getElementById('p-proy').value;
-  const fecha=document.getElementById('p-fecha').value;
-  const el=document.getElementById('prod-cont');
-  if(!pjId){el.innerHTML='<div class="empty"><div class="ic">⚙️</div>Selecciona un proyecto.</div>';return;}
-  const pj=proyectos.find(p=>p.id===pjId); if(!pj)return;
-  const sol=gSol(curSol); const reg=getReg(pjId,fecha,curSol);
-  const hi=document.getElementById('p-hinicio')?.value||'';
-  const hf=document.getElementById('p-hfin')?.value||'';
-  const durStr=(()=>{if(!hi||!hf)return'';const [hhi,mmi]=hi.split(':').map(Number);const [hhf,mmf]=hf.split(':').map(Number);let mins=(hhf*60+mmf)-(hhi*60+mmi);if(mins<0)mins+=1440;return`${Math.floor(mins/60)}h${(mins%60).toString().padStart(2,'0')}min`;})();
-  el.innerHTML=`<div class="card">
-    <div class="ch" style="background:${sol.color};color:#fff;border-radius:7px 7px 0 0">
-      ${sol.emoji} ${sol.nombre} — ${fecha?new Date(fecha+'T12:00').toLocaleDateString('es-CO',{weekday:'long',day:'numeric',month:'long'}):'—'}
-      ${hi&&hf?`<span style="margin-left:12px;font-size:11px;opacity:.85;font-weight:400">⏱ ${hi} → ${hf} (${durStr})</span>`:''}
+
+window.selSol = function(id){ curSol=id; rStabs(); rDiaSoldador(); };
+
+// ── VISTA DÍA COMPLETO DEL SOLDADOR ─────────────────────────────────────────
+window.rDiaSoldador = function(){
+  const fecha=document.getElementById('p-fecha')?.value||'';
+  const el=document.getElementById('prod-dia'); if(!el)return;
+  if(!curSol||!fecha){
+    el.innerHTML='<div class="empty"><div class="ic">👷</div>Selecciona un soldador para ver su día.</div>';
+    return;
+  }
+  const sol=gSol(curSol);
+  // Obtener registros del soldador en esa fecha
+  const regsHoy=registros.filter(r=>r.solId===curSol&&r.fecha===fecha);
+  const totalHoy=regsHoy.reduce((a,r)=>a+Object.values(r.piezas||{}).reduce((x,y)=>x+y,0),0);
+
+  let html='';
+
+  // Resumen del día si hay registros guardados
+  if(regsHoy.length>0){
+    html+=`<div class="resumen-dia">
+      <div style="font-size:13px;font-weight:700;margin-bottom:8px">${sol.emoji} ${sol.nombre} — ${new Date(fecha+'T12:00').toLocaleDateString('es-CO',{weekday:'long',day:'numeric',month:'long'})}</div>
+      ${regsHoy.map(r=>{
+        const pj=proyectos.find(p=>p.id===r.proyId);
+        const tot=Object.values(r.piezas||{}).reduce((a,b)=>a+b,0);
+        const dur=(()=>{if(!r.hinicio||!r.hfin)return'';const[hhi,mmi]=r.hinicio.split(':').map(Number);const[hhf,mmf]=r.hfin.split(':').map(Number);let m=(hhf*60+mmf)-(hhi*60+mmi);if(m<0)m+=1440;return` · ${Math.floor(m/60)}h${(m%60).toString().padStart(2,'0')}min`;})();
+        return `<div class="resumen-row">
+          <span>${pj?.nom||'Proyecto'} <span style="opacity:.6;font-size:10px">${r.hinicio||''}${r.hfin?'→'+r.hfin:''}${dur}</span></span>
+          <span style="font-weight:700;color:var(--weld)">${tot} und</span>
+        </div>`;
+      }).join('')}
+      <div class="resumen-row" style="margin-top:4px;border-top:1px solid rgba(255,255,255,.2);padding-top:6px">
+        <span style="font-weight:700">TOTAL DEL DÍA</span>
+        <span style="font-weight:700;font-size:15px;color:var(--weld)">${totalHoy} und</span>
+      </div>
+    </div>`;
+  }
+
+  // Turnos ya guardados (uno por proyecto)
+  regsHoy.forEach(reg=>{
+    const pj=proyectos.find(p=>p.id===reg.proyId);
+    if(!pj)return;
+    const tot=Object.values(reg.piezas||{}).reduce((a,b)=>a+b,0);
+    html+=renderTurnoCard(sol,pj,reg,fecha,true);
+  });
+
+  // Botón para agregar nuevo turno/proyecto
+  html+=`<button class="add-turno-btn" onclick="addTurno()">
+    ＋ Agregar proyecto al turno de ${sol.nombre.split(' ')[0]}
+  </button>`;
+
+  // Formulario de nuevo turno (si está activo)
+  if(window._nuevoTurnoActivo){
+    html+=renderNuevoTurno(sol,fecha);
+  }
+
+  el.innerHTML=html;
+};
+
+function renderTurnoCard(sol,pj,reg,fecha,guardado){
+  const tot=Object.values(reg.piezas||{}).reduce((a,b)=>a+b,0);
+  const dur=(()=>{if(!reg.hinicio||!reg.hfin)return'';const[hhi,mmi]=reg.hinicio.split(':').map(Number);const[hhf,mmf]=reg.hfin.split(':').map(Number);let m=(hhf*60+mmf)-(hhi*60+mmi);if(m<0)m+=1440;return`${Math.floor(m/60)}h${(m%60).toString().padStart(2,'0')}min`;})();
+
+  return `<div class="turno-card">
+    <div class="turno-header" style="background:${sol.color}18;border-bottom:1px solid var(--border)">
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:14px">${pj.nom} <span class="chip">${pj.cod||''}</span></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">
+          ${reg.hinicio&&reg.hfin?`⏱ ${reg.hinicio} → ${reg.hfin} (${dur})`:'Sin horario registrado'}
+        </div>
+      </div>
+      <span class="turno-badge guardado">✓ ${tot} und guardadas</span>
+      <button class="btn bg2 bsm" onclick="editarTurno('${pj.id}','${reg.hinicio||''}','${reg.hfin||''}','${fecha}')">✏️ Editar</button>
+    </div>
+    <div class="cb" style="padding:10px 16px">
+      <div class="dg">${(pj.piezas||[]).filter(p=>(reg.piezas?.[p.plano]||0)>0).map(p=>{
+        const cant=reg.piezas?.[p.plano]||0;
+        const acum=getPP(pj.id,p.plano);
+        const pp=p.cant>0?acum/p.cant:0;
+        return `<div class="dr${p.enc?' enc':''}" style="opacity:.85">
+          <span style="font-size:11px;font-weight:700;color:var(--steel-md)">${p.plano}</span>
+          <div><div style="font-size:11px">${p.nom}</div></div>
+          <div style="font-size:10px;color:var(--muted);text-align:center">Meta: ${p.cant}<br><strong>${acum} acum.</strong></div>
+          <div></div>
+          <div style="text-align:center;font-weight:700;font-size:14px;color:var(--green)">${cant}</div>
+          <span class="dpct" style="background:var(--green-lt);color:var(--green)">${Math.round(pp*100)}%</span>
+        </div>`;
+      }).join('')}
+      ${(pj.piezas||[]).filter(p=>(reg.piezas?.[p.plano]||0)===0).length===(pj.piezas||[]).length?
+        '<div style="text-align:center;color:var(--muted);font-size:12px;padding:8px">Sin piezas registradas</div>':''}
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderNuevoTurno(sol,fecha){
+  const pjsDisponibles=proyectos.filter(pj=>!registros.some(r=>r.solId===curSol&&r.fecha===fecha&&r.proyId===pj.id));
+  if(!pjsDisponibles.length) return '<div style="text-align:center;color:var(--muted);padding:12px;font-size:12px">Todos los proyectos ya tienen registro en este día.</div>';
+
+  return `<div class="turno-card" id="card-nuevo-turno" style="border:2px solid var(--accent)">
+    <div class="turno-header" style="background:#fff8f4;border-bottom:1px solid #fde0c0">
+      <div style="flex:1;font-weight:700;color:var(--accent)">Nuevo registro de producción</div>
+      <button class="btn bd2 bsm" onclick="cancelarNuevoTurno()">✕ Cancelar</button>
     </div>
     <div class="cb">
-      <div style="display:grid;grid-template-columns:68px 1fr 95px 75px 85px 72px;gap:7px;padding:0 4px 7px;border-bottom:1px solid var(--border);margin-bottom:7px">
-        <span style="font-size:10px;font-weight:700;color:var(--muted)">PLANO</span>
-        <span style="font-size:10px;font-weight:700;color:var(--muted)">PIEZA</span>
-        <span style="font-size:10px;font-weight:700;color:var(--muted)">PERFIL</span>
-        <span style="font-size:10px;font-weight:700;color:var(--muted);text-align:center">ACUM.</span>
-        <span style="font-size:10px;font-weight:700;color:var(--muted);text-align:center">HOY</span>
-        <span style="font-size:10px;font-weight:700;color:var(--muted);text-align:center">%</span>
+      <div class="fr" style="margin-bottom:12px">
+        <div class="fg">
+          <label>Proyecto</label>
+          <select id="nt-proy" onchange="renderPiezasNuevoTurno()" style="border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-size:13px;font-family:inherit">
+            <option value="">— Seleccionar proyecto —</option>
+            ${pjsDisponibles.map(p=>`<option value="${p.id}">${p.nom} (${p.cod||''})</option>`).join('')}
+          </select>
+        </div>
+        <div class="fg"><label>Hora inicio</label><input type="time" id="nt-hi" value="06:00" onchange="calcDurNT()"></div>
+        <div class="fg"><label>Hora fin</label><input type="time" id="nt-hf" value="14:00" onchange="calcDurNT()"></div>
+        <div class="fg"><label>Duración</label><div id="nt-dur" style="border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-size:13px;background:#f6f8fa;color:var(--green);font-weight:600">8h 00min</div></div>
       </div>
-      <div class="dg">${(pj.piezas||[]).map(p=>{
-        const perf=gPerf(p.perfilId);const hoy=reg.piezas?.[p.plano]||0;
-        const acum=getPP(pjId,p.plano);const meta=Math.max(1,Math.round(p.cant/20));
-        const pct=meta>0?hoy/meta:0;
-        const ps=hoy>0?(pct>=1?'background:var(--green-lt);color:var(--green)':pct>=0.8?'background:var(--amber-lt);color:var(--amber)':'background:var(--red-lt);color:var(--red)'):'background:var(--bg);color:var(--muted)';
+      <div id="nt-piezas"><div style="color:var(--muted);font-size:12px;padding:8px 0">Selecciona un proyecto para ver las piezas.</div></div>
+      <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+        <button class="btn bp" onclick="guardarNuevoTurno('${fecha}')">💾 Guardar turno</button>
+        <span id="nt-status" style="font-size:11px;color:var(--green)"></span>
+      </div>
+    </div>
+  </div>`;
+}
+
+window.addTurno = function(){
+  window._nuevoTurnoActivo=true;
+  rDiaSoldador();
+  setTimeout(()=>{
+    const el=document.getElementById('card-nuevo-turno');
+    if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
+  },100);
+};
+window.cancelarNuevoTurno = function(){
+  window._nuevoTurnoActivo=false;
+  rDiaSoldador();
+};
+
+window.calcDurNT = function(){
+  const hi=document.getElementById('nt-hi')?.value||'';
+  const hf=document.getElementById('nt-hf')?.value||'';
+  const el=document.getElementById('nt-dur'); if(!el)return;
+  if(!hi||!hf){el.textContent='—';return;}
+  const[hhi,mmi]=hi.split(':').map(Number);
+  const[hhf,mmf]=hf.split(':').map(Number);
+  let mins=(hhf*60+mmf)-(hhi*60+mmi);
+  if(mins<0)mins+=1440;
+  el.textContent=`${Math.floor(mins/60)}h${(mins%60).toString().padStart(2,'0')}min`;
+  el.style.color=mins>0?'var(--green)':'var(--red)';
+};
+
+window.renderPiezasNuevoTurno = function(){
+  const pjId=document.getElementById('nt-proy')?.value||'';
+  const el=document.getElementById('nt-piezas'); if(!el)return;
+  if(!pjId){el.innerHTML='<div style="color:var(--muted);font-size:12px;padding:8px 0">Selecciona un proyecto.</div>';return;}
+  const pj=proyectos.find(p=>p.id===pjId); if(!pj)return;
+  el.innerHTML=`
+    <div style="display:grid;grid-template-columns:68px 1fr 95px 75px 85px 72px;gap:7px;padding:0 4px 7px;border-bottom:1px solid var(--border);margin-bottom:7px">
+      <span style="font-size:10px;font-weight:700;color:var(--muted)">PLANO</span>
+      <span style="font-size:10px;font-weight:700;color:var(--muted)">PIEZA</span>
+      <span style="font-size:10px;font-weight:700;color:var(--muted)">PERFIL</span>
+      <span style="font-size:10px;font-weight:700;color:var(--muted);text-align:center">ACUM.</span>
+      <span style="font-size:10px;font-weight:700;color:var(--muted);text-align:center">HOY</span>
+      <span style="font-size:10px;font-weight:700;color:var(--muted);text-align:center">%</span>
+    </div>
+    <div class="dg" id="nt-filas">
+      ${(pj.piezas||[]).map(p=>{
+        const perf=gPerf(p.perfilId);
+        const acum=getPP(pjId,p.plano);
+        const pp=p.cant>0?acum/p.cant:0;
         return `<div class="dr${p.enc?' enc':''}">
           <span style="font-size:11px;font-weight:700;color:var(--steel-md)">${p.plano}</span>
           <div>
             <div style="font-size:11px;font-weight:${p.enc?700:400}">${p.nom}</div>
-            <div style="font-size:10px;color:var(--muted)">${tt(perf.tipo)} ${perf.dims||''} · ${perf.rend}m/h
-              ${p.long?`· <strong>${p.long}m</strong>`:''} ${p.peso?`· <strong>${p.peso}kg</strong>`:''}
-            </div>
+            <div style="font-size:10px;color:var(--muted)">${tt(perf.tipo)} ${perf.dims||''} · ${perf.rend}m/h</div>
           </div>
           <div style="font-size:10px;color:var(--muted);text-align:center">Meta: <strong>${p.cant}</strong><br>
-            <strong style="color:var(--${pc(p.cant>0?acum/p.cant:0)})">${acum} acum.</strong></div>
-          <div style="text-align:center;font-size:10px;color:var(--muted)">Suger.<br><strong>${meta}</strong></div>
-          <input type="number" min="0" value="${hoy}" id="inp-${pjId}-${p.plano.replace(/[^a-zA-Z0-9]/g,'-')}"
-            onchange="upReg('${pjId}','${fecha}','${curSol}','${p.plano}',parseInt(this.value)||0)"
+            <strong style="color:var(--${pc(pp)})">${acum} acum.</strong></div>
+          <div style="text-align:center;font-size:10px;color:var(--muted)">Suger.<br><strong>${Math.max(1,Math.round(p.cant/20))}</strong></div>
+          <input type="number" min="0" value="0" id="nt-inp-${p.plano.replace(/[^a-zA-Z0-9]/g,'-')}"
             style="background:${p.enc?'#fff8ee':'#fff'}">
-          <span class="dpct" style="${ps}">${hoy>0?Math.round(pct*100)+'%':'—'}</span>
+          <span class="dpct" style="background:var(--bg);color:var(--muted)">—</span>
         </div>`;
-      }).join('')}</div>
-      <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
-        <span style="font-size:11px;color:var(--green)" id="sstatus"></span>
-      </div>
-    </div>
-  </div>`;
+      }).join('')}
+    </div>`;
+};
+
+window.guardarNuevoTurno = async function(fecha){
+  const pjId=document.getElementById('nt-proy')?.value||'';
+  if(!pjId){alert('Selecciona un proyecto.');return;}
+  const pj=proyectos.find(p=>p.id===pjId);
+  const hi=document.getElementById('nt-hi')?.value||'';
+  const hf=document.getElementById('nt-hf')?.value||'';
+  // Recolectar piezas
+  const piezas={};
+  let total=0;
+  (pj.piezas||[]).forEach(p=>{
+    const inpId='nt-inp-'+p.plano.replace(/[^a-zA-Z0-9]/g,'-');
+    const val=parseInt(document.getElementById(inpId)?.value||'0')||0;
+    if(val>0){piezas[p.plano]=val;total+=val;}
+  });
+  const regId=`${pjId}_${fecha}_${curSol}`;
+  await fbSet('registros',regId,{id:regId,proyId:pjId,fecha,solId:curSol,piezas,hinicio:hi,hfin:hf,guardado:true});
+  window._nuevoTurnoActivo=false;
+  const st=document.getElementById('nt-status');
+  if(st){st.textContent=`✅ ${total} unidades guardadas`;}
+  setTimeout(()=>rDiaSoldador(),600);
+};
+
+window.editarTurno = async function(pjId,hi,hf,fecha){
+  // Cargar el turno en modo edición
+  window._editandoTurno={pjId,hi,hf,fecha};
+  window._nuevoTurnoActivo=false;
+  const pj=proyectos.find(p=>p.id===pjId);
+  const reg=registros.find(r=>r.proyId===pjId&&r.fecha===fecha&&r.solId===curSol)||{piezas:{}};
+  const sol=gSol(curSol);
+  const el=document.getElementById('prod-dia'); if(!el)return;
+  // Re-renderizar día completo pero con este turno en modo edición
+  rDiaSoldador();
 };
 
 window.upReg = async function(pjId,fecha,solId,plano,val){
@@ -800,12 +965,8 @@ window.upReg = async function(pjId,fecha,solId,plano,val){
   let existing=registros.find(r=>r.id===regId);
   const piezas=existing?{...existing.piezas}:{};
   piezas[plano]=val;
-  const hinicio=document.getElementById('p-hinicio')?.value||'';
-  const hfin=document.getElementById('p-hfin')?.value||'';
-  await fbSet('registros',regId,{id:regId,proyId:pjId,fecha,solId,piezas,hinicio,hfin});
-  const tot=Object.values(piezas).reduce((a,b)=>a+b,0);
-  const el=document.getElementById('sstatus');
-  if(el){el.textContent=`✓ Guardado — Total turno: ${tot} und`;setTimeout(()=>{if(el)el.textContent='';},3000);}
+  await fbSet('registros',regId,{id:regId,proyId:pjId,fecha,solId,piezas,
+    hinicio:existing?.hinicio||'',hfin:existing?.hfin||''});
 };
 
 // ── PERFILES ──────────────────────────────────────────────────────────────────
