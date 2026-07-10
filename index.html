@@ -800,7 +800,66 @@ window.rDiaSoldador = function(){
 function renderTurnoCard(sol,pj,reg,fecha,guardado){
   const tot=Object.values(reg.piezas||{}).reduce((a,b)=>a+b,0);
   const dur=(()=>{if(!reg.hinicio||!reg.hfin)return'';const[hhi,mmi]=reg.hinicio.split(':').map(Number);const[hhf,mmf]=reg.hfin.split(':').map(Number);let m=(hhf*60+mmf)-(hhi*60+mmi);if(m<0)m+=1440;return`${Math.floor(m/60)}h${(m%60).toString().padStart(2,'0')}min`;})();
+  const editando=(window._editandoTurnoId===pj.id);
 
+  if(editando){
+    // MODO EDICIÓN — formulario completo con todos los campos
+    return `<div class="turno-card" id="edit-form-${pj.id}" style="border:2px solid var(--accent)">
+      <div class="turno-header" style="background:#fff8f4;border-bottom:1px solid #fde0c0">
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:14px;color:var(--accent)">✏️ Editando: ${pj.nom}</div>
+          <div style="font-size:11px;color:var(--muted)"><span class="chip">${pj.cod||''}</span></div>
+        </div>
+        <button class="btn bg2 bsm" onclick="cancelarEdicion()">✕ Cancelar</button>
+      </div>
+      <div class="cb">
+        <div class="fr" style="margin-bottom:12px">
+          <div class="fg"><label>Hora inicio</label><input type="time" id="edit-hi-${pj.id}" value="${reg.hinicio||''}" onchange="calcDurEdit('${pj.id}')"></div>
+          <div class="fg"><label>Hora fin</label><input type="time" id="edit-hf-${pj.id}" value="${reg.hfin||''}" onchange="calcDurEdit('${pj.id}')"></div>
+          <div class="fg"><label>Duración</label><div id="edit-dur-${pj.id}" style="border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-size:13px;background:#f6f8fa;color:var(--green);font-weight:600">${dur||'—'}</div></div>
+        </div>
+        <div style="display:grid;grid-template-columns:68px 1fr 95px 75px 85px 72px;gap:7px;padding:0 4px 7px;border-bottom:1px solid var(--border);margin-bottom:7px">
+          <span style="font-size:10px;font-weight:700;color:var(--muted)">PLANO</span>
+          <span style="font-size:10px;font-weight:700;color:var(--muted)">PIEZA</span>
+          <span style="font-size:10px;font-weight:700;color:var(--muted)">PERFIL</span>
+          <span style="font-size:10px;font-weight:700;color:var(--muted);text-align:center">ACUM.</span>
+          <span style="font-size:10px;font-weight:700;color:var(--muted);text-align:center">CANTIDAD</span>
+          <span style="font-size:10px;font-weight:700;color:var(--muted);text-align:center">%</span>
+        </div>
+        <div class="dg">
+          ${(pj.piezas||[]).map(p=>{
+            const perf=gPerf(p.perfilId);
+            const acum=getPP(pj.id,p.plano);
+            const valActual=reg.piezas?.[p.plano]||0;
+            const pp=p.cant>0?acum/p.cant:0;
+            return `<div class="dr${p.enc?' enc':''}">
+              <span style="font-size:11px;font-weight:700;color:var(--steel-md)">${p.plano}</span>
+              <div>
+                <div style="font-size:11px;font-weight:${p.enc?700:400}">${p.nom}</div>
+                <div style="font-size:10px;color:var(--muted)">${tt(perf.tipo)} ${perf.dims||''}</div>
+              </div>
+              <div style="font-size:10px;color:var(--muted);text-align:center">Meta: <strong>${p.cant}</strong><br>
+                <strong style="color:var(--${pc(pp)})">${acum} acum.</strong></div>
+              <div style="text-align:center;font-size:10px;color:var(--muted)">Suger.<br><strong>${Math.max(1,Math.round(p.cant/20))}</strong></div>
+              <input type="number" min="0" value="${valActual}"
+                id="edit-inp-${pj.id}-${p.plano.replace(/[^a-zA-Z0-9]/g,'-')}"
+                style="background:${p.enc?'#fff8ee':'#fff'}">
+              <span class="dpct" style="${valActual>0?'background:var(--green-lt);color:var(--green)':'background:var(--bg);color:var(--muted)'}">
+                ${valActual>0?Math.round(pp*100)+'%':'—'}
+              </span>
+            </div>`;
+          }).join('')}
+        </div>
+        <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+          <button class="btn bp" onclick="guardarEdicion('${pj.id}','${fecha}')">💾 Guardar cambios</button>
+          <button class="btn bg2 bsm" onclick="cancelarEdicion()">Cancelar</button>
+          <span id="edit-status-${pj.id}" style="font-size:11px;color:var(--green)"></span>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // MODO LECTURA — vista compacta del turno guardado
   return `<div class="turno-card">
     <div class="turno-header" style="background:${sol.color}18;border-bottom:1px solid var(--border)">
       <div style="flex:1">
@@ -813,21 +872,22 @@ function renderTurnoCard(sol,pj,reg,fecha,guardado){
       <button class="btn bg2 bsm" onclick="editarTurno('${pj.id}','${reg.hinicio||''}','${reg.hfin||''}','${fecha}')">✏️ Editar</button>
     </div>
     <div class="cb" style="padding:10px 16px">
-      <div class="dg">${(pj.piezas||[]).filter(p=>(reg.piezas?.[p.plano]||0)>0).map(p=>{
-        const cant=reg.piezas?.[p.plano]||0;
-        const acum=getPP(pj.id,p.plano);
-        const pp=p.cant>0?acum/p.cant:0;
-        return `<div class="dr${p.enc?' enc':''}" style="opacity:.85">
-          <span style="font-size:11px;font-weight:700;color:var(--steel-md)">${p.plano}</span>
-          <div><div style="font-size:11px">${p.nom}</div></div>
-          <div style="font-size:10px;color:var(--muted);text-align:center">Meta: ${p.cant}<br><strong>${acum} acum.</strong></div>
-          <div></div>
-          <div style="text-align:center;font-weight:700;font-size:14px;color:var(--green)">${cant}</div>
-          <span class="dpct" style="background:var(--green-lt);color:var(--green)">${Math.round(pp*100)}%</span>
-        </div>`;
-      }).join('')}
-      ${(pj.piezas||[]).filter(p=>(reg.piezas?.[p.plano]||0)===0).length===(pj.piezas||[]).length?
-        '<div style="text-align:center;color:var(--muted);font-size:12px;padding:8px">Sin piezas registradas</div>':''}
+      <div class="dg">
+        ${(pj.piezas||[]).filter(p=>(reg.piezas?.[p.plano]||0)>0).map(p=>{
+          const cant=reg.piezas?.[p.plano]||0;
+          const acum=getPP(pj.id,p.plano);
+          const pp=p.cant>0?acum/p.cant:0;
+          return `<div class="dr${p.enc?' enc':''}" style="opacity:.9">
+            <span style="font-size:11px;font-weight:700;color:var(--steel-md)">${p.plano}</span>
+            <div><div style="font-size:11px">${p.nom}</div></div>
+            <div style="font-size:10px;color:var(--muted);text-align:center">Meta: ${p.cant}<br><strong style="color:var(--${pc(pp)})">${acum} acum.</strong></div>
+            <div></div>
+            <div style="text-align:center;font-weight:700;font-size:14px;color:var(--green)">${cant}</div>
+            <span class="dpct" style="background:var(--green-lt);color:var(--green)">${Math.round(pp*100)}%</span>
+          </div>`;
+        }).join('')}
+        ${(pj.piezas||[]).filter(p=>(reg.piezas?.[p.plano]||0)===0).length===(pj.piezas||[]).length?
+          '<div style="text-align:center;color:var(--muted);font-size:12px;padding:8px">Sin piezas registradas este turno</div>':''}
       </div>
     </div>
   </div>`;
@@ -948,15 +1008,68 @@ window.guardarNuevoTurno = async function(fecha){
   setTimeout(()=>rDiaSoldador(),600);
 };
 
-window.editarTurno = async function(pjId,hi,hf,fecha){
-  // Cargar el turno en modo edición
-  window._editandoTurno={pjId,hi,hf,fecha};
+window.editarTurno = function(pjId,hi,hf,fecha){
+  // Marcar que estamos editando este turno específico
+  window._editandoTurnoId=pjId;
   window._nuevoTurnoActivo=false;
-  const pj=proyectos.find(p=>p.id===pjId);
-  const reg=registros.find(r=>r.proyId===pjId&&r.fecha===fecha&&r.solId===curSol)||{piezas:{}};
-  const sol=gSol(curSol);
-  const el=document.getElementById('prod-dia'); if(!el)return;
-  // Re-renderizar día completo pero con este turno en modo edición
+  rDiaSoldador();
+  // Esperar a que el DOM se renderice y luego pre-cargar datos
+  setTimeout(()=>{
+    const pj=proyectos.find(p=>p.id===pjId); if(!pj)return;
+    const reg=registros.find(r=>r.proyId===pjId&&r.fecha===fecha&&r.solId===curSol)||{piezas:{}};
+    // Buscar el formulario de edición para este turno
+    const form=document.getElementById('edit-form-'+pjId); if(!form)return;
+    // Pre-cargar hora inicio y fin
+    const hiEl=document.getElementById('edit-hi-'+pjId);
+    const hfEl=document.getElementById('edit-hf-'+pjId);
+    if(hiEl)hiEl.value=reg.hinicio||hi||'';
+    if(hfEl)hfEl.value=reg.hfin||hf||'';
+    calcDurEdit(pjId);
+    // Pre-cargar cantidades
+    (pj.piezas||[]).forEach(p=>{
+      const inpId='edit-inp-'+pjId+'-'+p.plano.replace(/[^a-zA-Z0-9]/g,'-');
+      const el=document.getElementById(inpId);
+      if(el)el.value=reg.piezas?.[p.plano]||0;
+    });
+    form.scrollIntoView({behavior:'smooth',block:'start'});
+  },150);
+};
+
+window.calcDurEdit = function(pjId){
+  const hi=document.getElementById('edit-hi-'+pjId)?.value||'';
+  const hf=document.getElementById('edit-hf-'+pjId)?.value||'';
+  const el=document.getElementById('edit-dur-'+pjId); if(!el)return;
+  if(!hi||!hf){el.textContent='—';return;}
+  const[hhi,mmi]=hi.split(':').map(Number);
+  const[hhf,mmf]=hf.split(':').map(Number);
+  let mins=(hhf*60+mmf)-(hhi*60+mmi);
+  if(mins<0)mins+=1440;
+  el.textContent=`${Math.floor(mins/60)}h${(mins%60).toString().padStart(2,'0')}min`;
+  el.style.color=mins>0?'var(--green)':'var(--red)';
+};
+
+window.guardarEdicion = async function(pjId,fecha){
+  const pj=proyectos.find(p=>p.id===pjId); if(!pj)return;
+  const hi=document.getElementById('edit-hi-'+pjId)?.value||'';
+  const hf=document.getElementById('edit-hf-'+pjId)?.value||'';
+  const piezas={};
+  let total=0;
+  (pj.piezas||[]).forEach(p=>{
+    const inpId='edit-inp-'+pjId+'-'+p.plano.replace(/[^a-zA-Z0-9]/g,'-');
+    const val=parseInt(document.getElementById(inpId)?.value||'0')||0;
+    piezas[p.plano]=val;
+    total+=val;
+  });
+  const regId=`${pjId}_${fecha}_${curSol}`;
+  await fbSet('registros',regId,{id:regId,proyId:pjId,fecha,solId:curSol,piezas,hinicio:hi,hfin:hf,guardado:true});
+  window._editandoTurnoId=null;
+  const st=document.getElementById('edit-status-'+pjId);
+  if(st){st.textContent=`✅ ${total} unidades guardadas`;}
+  setTimeout(()=>rDiaSoldador(),600);
+};
+
+window.cancelarEdicion = function(){
+  window._editandoTurnoId=null;
   rDiaSoldador();
 };
 
