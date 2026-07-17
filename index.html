@@ -842,7 +842,8 @@ function renderTurnoCard(sol,pj,reg,fecha,guardado){
                 <strong style="color:var(--${pc(pp)})">${acum} acum.</strong></div>
               <div style="text-align:center;font-size:10px;color:var(--muted)">Suger.<br><strong>${Math.max(1,Math.round(p.cant/20))}</strong></div>
               <input type="number" min="0" value="${valActual}"
-                id="edit-inp-${pj.id}-${p.plano.replace(/[^a-zA-Z0-9]/g,'-')}"
+                data-plano="${p.plano}"
+                class="edit-pieza-inp"
                 style="background:${p.enc?'#fff8ee':'#fff'}">
               <span class="dpct" style="${valActual>0?'background:var(--green-lt);color:var(--green)':'background:var(--bg);color:var(--muted)'}">
                 ${valActual>0?Math.round(pp*100)+'%':'—'}
@@ -978,7 +979,8 @@ window.renderPiezasNuevoTurno = function(){
           <div style="font-size:10px;color:var(--muted);text-align:center">Meta: <strong>${p.cant}</strong><br>
             <strong style="color:var(--${pc(pp)})">${acum} acum.</strong></div>
           <div style="text-align:center;font-size:10px;color:var(--muted)">Suger.<br><strong>${Math.max(1,Math.round(p.cant/20))}</strong></div>
-          <input type="number" min="0" value="0" id="nt-inp-${p.plano.replace(/[^a-zA-Z0-9]/g,'-')}"
+          <input type="number" min="0" value="0"
+            data-plano="${p.plano}" class="nt-pieza-inp"
             style="background:${p.enc?'#fff8ee':'#fff'}">
           <span class="dpct" style="background:var(--bg);color:var(--muted)">—</span>
         </div>`;
@@ -992,14 +994,19 @@ window.guardarNuevoTurno = async function(fecha){
   const pj=proyectos.find(p=>p.id===pjId);
   const hi=document.getElementById('nt-hi')?.value||'';
   const hf=document.getElementById('nt-hf')?.value||'';
-  // Recolectar piezas
+  // Recolectar piezas por data-plano
   const piezas={};
   let total=0;
-  (pj.piezas||[]).forEach(p=>{
-    const inpId='nt-inp-'+p.plano.replace(/[^a-zA-Z0-9]/g,'-');
-    const val=parseInt(document.getElementById(inpId)?.value||'0')||0;
-    if(val>0){piezas[p.plano]=val;total+=val;}
-  });
+  const ntForm=document.getElementById('card-nuevo-turno');
+  if(ntForm){
+    ntForm.querySelectorAll('input.nt-pieza-inp').forEach(el=>{
+      const plano=el.getAttribute('data-plano');
+      if(!plano)return;
+      const val=parseInt(el.value||'0')||0;
+      piezas[plano]=val;
+      total+=val;
+    });
+  }
   const regId=`${pjId}_${fecha}_${curSol}`;
   await fbSet('registros',regId,{id:regId,proyId:pjId,fecha,solId:curSol,piezas,hinicio:hi,hfin:hf,guardado:true});
   window._nuevoTurnoActivo=false;
@@ -1054,17 +1061,27 @@ window.guardarEdicion = async function(pjId,fecha){
   const hf=document.getElementById('edit-hf-'+pjId)?.value||'';
   const piezas={};
   let total=0;
-  (pj.piezas||[]).forEach(p=>{
-    const inpId='edit-inp-'+pjId+'-'+p.plano.replace(/[^a-zA-Z0-9]/g,'-');
-    const val=parseInt(document.getElementById(inpId)?.value||'0')||0;
-    piezas[p.plano]=val;
+  // Recoger valores directamente del DOM buscando todos los inputs del formulario
+  const form=document.getElementById('edit-form-'+pjId);
+  if(!form){alert('Error: formulario no encontrado.');return;}
+  const inputs=form.querySelectorAll('input[type=number]');
+  // Los inputs de cantidad están después de los de hora — mapear por orden de piezas
+  const piezasList=pj.piezas||[];
+  // Buscar específicamente los inputs de piezas (no los de hora)
+  // Recoger por data-plano — más confiable que buscar por ID
+  const inpEls=form.querySelectorAll('input.edit-pieza-inp');
+  inpEls.forEach(el=>{
+    const plano=el.getAttribute('data-plano');
+    if(!plano)return;
+    const val=parseInt(el.value||'0')||0;
+    piezas[plano]=val;
     total+=val;
   });
-  const regId=`${pjId}_${fecha}_${curSol}`;
+  const regId=pjId+'_'+fecha+'_'+curSol;
   await fbSet('registros',regId,{id:regId,proyId:pjId,fecha,solId:curSol,piezas,hinicio:hi,hfin:hf,guardado:true});
   window._editandoTurnoId=null;
   const st=document.getElementById('edit-status-'+pjId);
-  if(st){st.textContent=`✅ ${total} unidades guardadas`;}
+  if(st){st.textContent='✅ '+total+' unidades guardadas';}
   setTimeout(()=>rDiaSoldador(),600);
 };
 
