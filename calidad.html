@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1e2d3d">
+<title>Plastextil — Control de Calidad</title>
+<style>
+:root{
+  --steel:#1e2d3d;--steel-md:#2e4a63;--steel-lt:#4a7090;
+  --accent:#e87722;--accent-lt:#ff9940;--weld:#f5c842;
+  --green:#2e7d52;--green-lt:#e2f0e8;
+  --red:#c0392b;--red-lt:#fce8e6;
+  --amber:#c07820;--amber-lt:#fff3d0;
+  --bg:#f0f2f5;--card:#fff;--border:#dde1e7;
+  --text:#1a2332;--muted:#6b7a8d;
+  --radius:8px;--shadow:0 1px 4px rgba(0,0,0,.10),0 4px 16px rgba(0,0,0,.06);
+  --pen:#8793a0;--ins:#2f74c0;--nc:#c0392b;--rep:#d9822b;--lib:#2e7d52;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,-apple-system,Roboto,sans-serif;background:var(--bg);color:var(--text);font-size:15px;line-height:1.4;min-height:100vh;-webkit-tap-highlight-color:transparent;padding-bottom:env(safe-area-inset-bottom,0px)}
+body.sin-scroll{overflow:hidden}
+button,input,select,textarea{font-family:inherit}
+:focus-visible{outline:3px solid var(--steel-lt);outline-offset:2px}
+
+/* NAV (igual a producción) */
+.nav{background:var(--steel);display:flex;align-items:center;padding:0 14px;padding-top:env(safe-area-inset-top,0px);min-height:52px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.nl{font-size:14px;font-weight:700;color:#fff;margin-right:18px;display:flex;align-items:center;gap:7px;white-space:nowrap}
+.ni{width:26px;height:26px;background:var(--accent);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:13px}
+.na{color:var(--accent)}
+.nt{display:flex;gap:1px;flex:1;overflow-x:auto}
+.ntb{padding:0 13px;height:52px;display:flex;align-items:center;font-size:13px;color:rgba(255,255,255,.6);cursor:pointer;border:0;border-bottom:3px solid transparent;background:none;white-space:nowrap;text-decoration:none;flex-shrink:0}
+.ntb:hover{color:#fff;background:rgba(255,255,255,.05)}
+.ntb.active{color:var(--accent-lt);border-bottom-color:var(--accent);font-weight:600}
+.nchip{font-size:11px;font-weight:600;padding:3px 9px;border-radius:10px;margin-left:8px;white-space:nowrap;flex-shrink:0;background:rgba(255,255,255,.12);color:rgba(255,255,255,.85)}
+.nchip.off{background:var(--red);color:#fff}
+.weld{height:3px;background:linear-gradient(90deg,var(--accent),var(--weld),var(--accent));opacity:.5;margin:-1px 0 14px;border-radius:0 0 2px 2px}
+
+main{max-width:1120px;margin:0 auto;padding:0 14px 60px}
+
+/* BOTONES Y CONTROLES (más grandes para uso en planta) */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:46px;padding:0 16px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:#fff;color:var(--text);white-space:nowrap;text-decoration:none}
+.btn:active{transform:translateY(1px)}
+.bp{background:var(--accent);border-color:var(--accent);color:#fff}
+.bs{background:var(--steel);border-color:var(--steel);color:#fff}
+.bgn{background:var(--green-lt);color:var(--green);border-color:#a0c8b0}
+.btxt{border-color:transparent;background:none;color:var(--muted)}
+.bsm{min-height:38px;padding:0 12px;font-size:13px}
+input,select,textarea{font-size:16px;border:1px solid var(--border);border-radius:8px;padding:10px 12px;min-height:46px;width:100%;background:#fff;color:var(--text)}
+textarea{min-height:80px;resize:vertical}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--steel-lt);box-shadow:0 0 0 3px rgba(46,74,99,.15)}
+.fg{display:flex;flex-direction:column;gap:5px}
+.fg label{font-size:12px;font-weight:600;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{min-height:42px;padding:0 15px;border-radius:21px;border:1px solid var(--border);background:#fff;font-weight:600;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;color:var(--text)}
+.chip.on{background:var(--steel);border-color:var(--steel);color:#fff}
+.dot{width:12px;height:12px;border-radius:50%;flex:none;display:inline-block}
+
+/* TARJETAS */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:14px}
+.ch{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px;font-weight:600;font-size:14px}
+.cb{padding:14px 16px}
+.kg{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px}
+@media(min-width:760px){.kg{grid-template-columns:repeat(4,1fr)}}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;box-shadow:var(--shadow)}
+.kv{font-size:26px;font-weight:700;line-height:1.1}
+.kl{font-size:12px;color:var(--muted);margin-top:3px;font-weight:600}
+.kpi.ac{border-left:3px solid var(--accent)}.kpi.gn{border-left:3px solid var(--green)}.kpi.am{border-left:3px solid var(--amber)}.kpi.st{border-left:3px solid var(--steel-lt)}
+
+.enc{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.enc h1{font-size:20px}
+.enc h2{font-size:17px}
+.filtros{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+@media(min-width:760px){.filtros{flex-direction:row;align-items:center}.filtros input{max-width:340px}}
+.empty{text-align:center;padding:32px 18px;color:var(--muted);background:var(--card);border:1px dashed var(--border);border-radius:var(--radius)}
+.loading{display:flex;align-items:center;justify-content:center;gap:8px;padding:30px;color:var(--muted)}
+.spinner{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.tipo-bodega{background:#dce8f5;color:#1e3a5f;border-radius:10px;padding:2px 9px;font-size:11px;font-weight:700}
+.tipo-especial{background:#ffeac0;color:#7a4a00;border-radius:10px;padding:2px 9px;font-size:11px;font-weight:700}
+.cod{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:2px 7px;font-size:11px;font-weight:600;color:var(--muted)}
+.muted{color:var(--muted)}
+.aviso{background:var(--amber-lt);color:#6b4300;border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:12px}
+
+/* PROYECTOS */
+.grid-p{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px}
+.pjc{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 16px;cursor:pointer;display:flex;flex-direction:column;gap:8px}
+.pjc:hover{border-color:var(--steel-lt)}
+.pjc h3{font-size:16px}
+.pj-top{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.pj-nums{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;font-size:12px;color:var(--muted);font-weight:600}
+.pj-nums b{display:block;font-size:19px;color:var(--text)}
+
+/* BARRA DE ESTADOS */
+.barra{display:flex;height:9px;border-radius:5px;overflow:hidden;background:var(--border)}
+.barra.g{height:14px;border-radius:7px}
+.barra span{height:100%}
+.s-fab{background:repeating-linear-gradient(45deg,#e3e7ec,#e3e7ec 4px,#d3d9e0 4px,#d3d9e0 8px)}
+.s-Pendiente{background:var(--pen)}.s-Ins{background:var(--ins)}.s-NC{background:var(--nc)}.s-Rep{background:var(--rep)}.s-Lib{background:var(--lib)}
+.ley{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:9px;font-size:13px}
+.ley i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+
+/* DATOS DEL PROYECTO */
+.volver{margin:0 0 8px -10px}
+.datos{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px 16px}
+.datos dt{font-size:12px;color:var(--muted);font-weight:600}
+.datos dd{font-weight:600}
+.tbl{width:100%;border-collapse:collapse;font-size:14px}
+.tbl th{background:var(--steel);color:#fff;padding:8px 10px;text-align:left;font-size:12px;font-weight:600}
+.tbl td{padding:9px 10px;border-bottom:1px solid var(--border)}
+.tbl .n{text-align:right;font-variant-numeric:tabular-nums}
+.sx{overflow-x:auto}
+
+/* LISTA DE PIEZAS */
+.plano{display:inline-block;font-weight:800;font-size:15px;background:var(--steel);color:#fff;border-radius:5px;padding:3px 9px;letter-spacing:.02em}
+.lp{display:flex;flex-direction:column;gap:8px}
+.pz{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;cursor:pointer;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px 12px;align-items:center}
+.pz:hover{border-color:var(--steel-lt)}
+.pz .c1,.pz .c2,.pz .c7,.pz .c8{grid-column:1/-1}
+.pz .c2 b{display:block}
+.pz .lbl{display:block;font-size:11px;color:var(--muted);font-weight:600}
+.pz .num{font-variant-numeric:tabular-nums;font-weight:600}
+.sols{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:13px}
+.sols span{display:inline-flex;align-items:center;gap:5px}
+.pz-h{display:none}
+@media(min-width:900px){
+  .pz,.pz-h{grid-template-columns:90px minmax(150px,1.5fr) minmax(110px,1fr) 60px 80px 70px minmax(130px,1.2fr) 120px}
+  .pz .c1,.pz .c2,.pz .c7,.pz .c8{grid-column:auto}
+  .pz .lbl{display:none}
+  .pz .num{text-align:right}
+  .pz-h{display:grid;gap:12px;padding:0 15px 5px;font-size:12px;font-weight:600;color:var(--muted)}
+  .pz-h .n{text-align:right}
+}
+
+/* MARCAS INDIVIDUALES */
+.uds{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-top:10px}
+.ud{border:2px solid var(--pen);border-radius:8px;padding:8px 10px;background:#fff;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:3px;min-height:58px;color:var(--text)}
+.ud b{font-size:15px;letter-spacing:.02em}
+.ud small{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)}
+.ud.nofab{border-style:dashed;border-color:#b7c0c9;background:#f7f8fa;color:var(--muted)}
+.ud.e-Ins{border-color:var(--ins);background:#eaf2fb}
+.ud.e-NC{border-color:var(--nc);background:var(--red-lt)}
+.ud.e-Rep{border-color:var(--rep);background:#fcefe2}
+.ud.e-Lib{border-color:var(--lib);background:var(--green-lt)}
+.sug{font-style:italic}
+
+/* HOJA MODAL */
+.velo{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:flex-end;justify-content:center}
+.velo[hidden]{display:none}
+.hoja{background:#fff;width:100%;max-width:720px;max-height:92vh;max-height:92dvh;overflow:auto;border-radius:14px 14px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom,0px))}
+@media(min-width:760px){.velo{align-items:center;padding:20px}.hoja{border-radius:10px}}
+.hcab{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px}
+.hcab h2{font-size:18px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.hx{width:44px;height:44px;border-radius:50%;border:0;background:var(--bg);font-size:22px;cursor:pointer;flex:none}
+.hpie{position:sticky;bottom:calc(-18px - env(safe-area-inset-bottom,0px));background:#fff;margin:16px -18px -18px;padding:12px 18px calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.hpie .btn{flex:1 1 auto}
+@media(min-width:760px){.hpie .btn{flex:0 0 auto}}
+.sec{font-size:12px;font-weight:700;color:var(--muted);margin:16px 0 8px;display:flex;align-items:center;gap:7px}
+.sec::after{content:'';flex:1;height:1px;background:var(--border)}
+.form{display:flex;flex-direction:column;gap:14px}
+
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translate(-50%,30px);background:var(--steel);color:#fff;padding:12px 18px;border-radius:10px;font-weight:600;opacity:0;pointer-events:none;transition:.2s;z-index:300;max-width:calc(100% - 32px);text-align:center}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.toast.error{background:var(--red)}
+@media(prefers-reduced-motion:reduce){.toast,.spinner{transition:none;animation:none}}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nl"><div class="ni">🔩</div>PLAST<span class="na">EXTIL</span></div>
+  <div class="nt">
+    <a class="ntb" href="./">⚙️ Producción</a>
+    <button class="ntb active" data-a="irInicio">✅ Calidad</button>
+  </div>
+  <span class="nchip" id="conexion">Conectando…</span>
+</nav>
+<div class="weld"></div>
+
+<main id="app"><div class="loading"><div class="spinner"></div>Cargando datos de producción…</div></main>
+<div id="velo" class="velo" hidden></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+import {
+  getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+  collection, doc, setDoc, onSnapshot
+} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+
+// ── FIREBASE (mismo proyecto que Producción) ─────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyAalSwhBUqh2DN006RxHDZKVm_7tgs4zmk",
+  authDomain: "plastextil-produccion.firebaseapp.com",
+  projectId: "plastextil-produccion",
+  storageBucket: "plastextil-produccion.firebasestorage.app",
+  messagingSenderId: "549300718249",
+  appId: "1:549300718249:web:07ffdd6015cbe6b7adf7b8"
+};
+const app = initializeApp(firebaseConfig);
+let db;
+try { db = initializeFirestore(app, {localCache: persistentLocalCache({tabManager: persistentMultipleTabManager()})}); }
+catch (e) { db = getFirestore(app); }
+
+// Colecciones de producción: SOLO LECTURA desde calidad
+// Colecciones propias de calidad: prefijo qc_
+const QC = 'qc_proyectos';
+
+// ── CONSTANTES ───────────────────────────────────────────────────────────────
+const ESTADOS = ['Pendiente','En inspección','No conforme','Reprocesada','Liberada'];
+const EC = {'Pendiente':'Pendiente','En inspección':'Ins','No conforme':'NC','Reprocesada':'Rep','Liberada':'Lib'};
+
+// ── ESTADO ───────────────────────────────────────────────────────────────────
+const S = {
+  proyectos:[], soldadores:[], registros:[], perfiles:[], qc:{},
+  cargado:{proyectos:false, soldadores:false, registros:false, perfiles:false, qc:false},
+  vista:'inicio', proyId:null, hoja:null,
+  fTexto:'', fTipo:'todos', fPz:''
+};
+
+// ── UTILIDADES ───────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm = s => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+const fmt = (n, d = 0) => Number(n || 0).toLocaleString('es-CO', {maximumFractionDigits:d});
+const listo = () => Object.values(S.cargado).every(Boolean);
+const gPerf = id => S.perfiles.find(p => p.id === id) || {nombre:'—'};
+const gSol = id => S.soldadores.find(s => s.id === id);
+const colorSol = id => (gSol(id) || {}).color || '#b7c0c9';
+const nomSol = id => (gSol(id) || {}).nombre || 'Sin asignar';
+const proy = () => S.proyectos.find(p => p.id === S.proyId);
+const qcDe = id => S.qc[id] || {};
+const pad = cant => Math.max(2, String(cant || 0).length);
+
+function toast(msg, tipo) {
+  const t = $('toast'); t.textContent = msg; t.className = 'toast show ' + (tipo || '');
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.className = 'toast', 3000);
+}
+function guardarQC(proyId, data) {
+  return setDoc(doc(db, QC, proyId), {...data, actualizado:new Date().toISOString()}, {merge:true})
+    .catch(e => { console.error(e); toast('No se pudo guardar: ' + e.message, 'error'); });
+}
+
+// ── LÓGICA: piezas de producción + datos de calidad ─────────────────────────
+// Cantidad fabricada de una pieza según los turnos registrados en Producción
+function fabricadas(proyId, nom) {
+  return S.registros.filter(r => r.proyId === proyId).reduce((a, r) => a + (r.piezas?.[nom] || 0), 0);
+}
+// Soldador sugerido para cada marca, en el orden en que se registró la producción
+function sugeridos(proyId, p) {
+  const regs = S.registros.filter(r => r.proyId === proyId && (r.piezas?.[p.nom] || 0) > 0)
+    .sort((a, b) => String(a.fecha || '').localeCompare(String(b.fecha || '')) || String(a.hinicio || '').localeCompare(String(b.hinicio || '')));
+  const out = [];
+  regs.forEach(r => { for (let i = 0; i < r.piezas[p.nom] && out.length < (p.cant || 0); i++) out.push(r.solId); });
+  return out;
+}
+// Lista de piezas de calidad de un proyecto (excluye líneas de encajonado, que son operaciones)
+function piezasCalidad(pj) {
+  const qc = qcDe(pj.id).unidades || {};
+  return (pj.piezas || []).filter(p => !p.enc && (p.cant || 0) > 0).map(p => {
+    const clave = String(p.plano || p.nom || '').trim();
+    const prod = Math.min(p.cant || 0, fabricadas(pj.id, p.nom));
+    const sug = sugeridos(pj.id, p);
+    const uq = qc[clave] || {};
+    const unidades = Array.from({length:p.cant}, (_, i) => {
+      const n = i + 1, q = uq[n] || {};
+      return {
+        n, marca:`${clave}-${String(n).padStart(pad(p.cant), '0')}`,
+        fabricada:n <= prod, estado:q.estado || 'Pendiente',
+        soldadorId:q.soldadorId || sug[i] || '', origen:q.soldadorId ? 'asignado' : sug[i] ? 'produccion' : ''
+      };
+    });
+    return {...p, clave, prod, unidades, sinPlano:!p.plano};
+  });
+}
+function resumen(piezas) {
+  const r = {refs:piezas.length, total:0, fab:0, kg:0, est:{}};
+  ESTADOS.forEach(k => r.est[k] = 0);
+  piezas.forEach(p => {
+    r.total += p.cant; r.fab += p.prod; r.kg += (p.peso || 0) * p.cant;
+    p.unidades.forEach(u => { if (u.fabricada) r.est[u.estado]++; });
+  });
+  return r;
+}
+
+// ── FRAGMENTOS DE VISTA ─────────────────────────────────────────────────────
+function barra(r, g) {
+  if (!r.total) return `<div class="barra ${g ? 'g' : ''}"></div>`;
+  const seg = (cls, v) => v ? `<span class="${cls}" style="width:${100 * v / r.total}%"></span>` : '';
+  return `<div class="barra ${g ? 'g' : ''}">${ESTADOS.map(k => seg('s-' + EC[k], r.est[k])).join('')}${seg('s-fab', r.total - r.fab)}</div>`;
+}
+function leyenda(r) {
+  return `<div class="ley">${ESTADOS.map(k => `<span><i class="s-${EC[k]}"></i>${k}: <b>${fmt(r.est[k])}</b></span>`).join('')}<span><i class="s-fab"></i>Por fabricar: <b>${fmt(r.total - r.fab)}</b></span></div>`;
+}
+const vacio = t => `<div class="empty">${t}</div>`;
+const cargando = t => `<div class="loading"><div class="spinner"></div>${t || 'Cargando…'}</div>`;
+const tipoTag = t => t === 'especial' ? '<span class="tipo-especial">Proyecto especial</span>' : '<span class="tipo-bodega">Bodega modular</span>';
+
+// ── VISTA: LISTA DE PROYECTOS ────────────────────────────────────────────────
+function vInicio() {
+  if (!listo()) return cargando('Cargando datos de producción…');
+  const t = norm(S.fTexto);
+  const lista = S.proyectos
+    .filter(p => (S.fTipo === 'todos' || (p.tipo || 'bodega') === S.fTipo)
+      && (!t || norm([p.nom, p.cod, qcDe(p.id).cliente].join(' ')).includes(t)))
+    .sort((a, b) => String(b.ini || '').localeCompare(String(a.ini || '')));
+  const chip = (v, txt) => `<button class="chip ${S.fTipo === v ? 'on' : ''}" data-a="fTipo" data-v="${v}">${txt}</button>`;
+  return `
+  <div class="enc"><h1>Control de calidad — proyectos</h1></div>
+  <div class="filtros">
+    <input id="fTexto" type="search" placeholder="Buscar por proyecto, código o cliente" value="${esc(S.fTexto)}" data-in="fTexto" aria-label="Buscar proyecto">
+    <div class="chips">${chip('todos', 'Todos')}${chip('bodega', 'Bodega modular')}${chip('especial', 'Proyecto especial')}</div>
+  </div>
+  ${lista.length ? `<div class="grid-p">${lista.map(tarjeta).join('')}</div>`
+    : vacio(S.proyectos.length ? 'Ningún proyecto coincide con la búsqueda.' : 'No hay proyectos todavía. Los proyectos y sus piezas se crean en <a href="./">Producción</a>.')}`;
+}
+function tarjeta(pj) {
+  const r = resumen(piezasCalidad(pj));
+  const lib = r.total ? Math.round(100 * r.est.Liberada / r.total) : 0;
+  const cli = qcDe(pj.id).cliente;
+  return `<article class="pjc" tabindex="0" data-a="abrir" data-id="${pj.id}">
+    <div class="pj-top">${tipoTag(pj.tipo)}${pj.cod ? `<span class="cod">${esc(pj.cod)}</span>` : ''}</div>
+    <h3>${esc(pj.nom)}</h3>
+    <div class="muted" style="font-size:13px">${cli ? esc(cli) : 'Cliente sin registrar'}</div>
+    ${barra(r)}
+    <div class="pj-nums"><div><b>${fmt(r.total)}</b>piezas</div><div><b>${fmt(r.fab)}</b>fabricadas</div><div><b>${lib}%</b>liberadas</div></div>
+  </article>`;
+}
+
+// ── VISTA: PROYECTO ──────────────────────────────────────────────────────────
+function vProyecto() {
+  if (!listo()) return cargando();
+  const pj = proy();
+  if (!pj) return vacio('Este proyecto ya no existe en Producción.<br><br><button class="btn bs" data-a="irInicio">Volver a proyectos</button>');
+  const q = qcDe(pj.id);
+  const piezas = piezasCalidad(pj);
+  const r = resumen(piezas);
+  const lib = r.total ? Math.round(100 * r.est.Liberada / r.total) : 0;
+  const nEnc = (pj.piezas || []).filter(p => p.enc).length;
+  const sinPlano = piezas.filter(p => p.sinPlano).length;
+
+  // Carga por soldador (marcas fabricadas)
+  const ps = {};
+  piezas.forEach(p => p.unidades.filter(u => u.fabricada).forEach(u => {
+    const k = u.soldadorId || '';
+    ps[k] = ps[k] || {u:0, kg:0, lib:0};
+    ps[k].u++; ps[k].kg += p.peso || 0; if (u.estado === 'Liberada') ps[k].lib++;
+  }));
+  const filasSol = Object.entries(ps).sort((a, b) => b[1].u - a[1].u);
+
+  const t = norm(S.fPz);
+  const vis = piezas.filter(p => !t || norm([p.plano, p.nom, gPerf(p.perfilId).nombre, ...new Set(p.unidades.map(u => nomSol(u.soldadorId)))].join(' ')).includes(t))
+    .sort((a, b) => String(a.clave).localeCompare(String(b.clave), 'es', {numeric:true}));
+
+  return `
+  <button class="btn btxt volver" data-a="irInicio">← Proyectos</button>
+  <div class="card"><div class="cb">
+    <div class="enc" style="margin-bottom:10px">
+      <div><div class="pj-top">${tipoTag(pj.tipo)}${pj.cod ? `<span class="cod">${esc(pj.cod)}</span>` : ''}</div>
+        <h1 style="font-size:22px;margin-top:6px">${esc(pj.nom)}</h1>
+        <div class="muted">${q.cliente ? esc(q.cliente) : 'Cliente sin registrar'}</div></div>
+      <button class="btn" data-a="datosQC">Datos de calidad</button>
+    </div>
+    <dl class="datos">
+      ${pj.tipo !== 'especial' && pj.ancho ? `<div><dt>Ancho</dt><dd>${fmt(pj.ancho, 2)} m</dd></div>` : ''}
+      ${pj.tipo !== 'especial' && pj.longitud ? `<div><dt>Longitud</dt><dd>${fmt(pj.longitud, 2)} m</dd></div>` : ''}
+      ${pj.tipo !== 'especial' && pj.altura ? `<div><dt>Altura</dt><dd>${fmt(pj.altura, 2)} m</dd></div>` : ''}
+      ${pj.tipo !== 'especial' && pj.porticos ? `<div><dt>Pórticos</dt><dd>${pj.porticos}</dd></div>` : ''}
+      ${pj.ini ? `<div><dt>Inicio</dt><dd>${esc(pj.ini)}</dd></div>` : ''}
+      ${pj.ent ? `<div><dt>Entrega</dt><dd>${esc(pj.ent)}</dd></div>` : ''}
+    </dl>
+    ${pj.desc ? `<p class="muted" style="margin-top:10px;font-size:14px">${esc(pj.desc)}</p>` : ''}
+    ${q.observaciones ? `<p style="margin-top:8px;font-size:14px"><b>Notas de calidad:</b> ${esc(q.observaciones)}</p>` : ''}
+    <p class="muted" style="margin-top:10px;font-size:12px">Los datos del proyecto y la lista de piezas se editan en Producción.</p>
+  </div></div>
+
+  <div class="kg">
+    <div class="kpi st"><div class="kv">${fmt(r.total)}</div><div class="kl">Piezas del proyecto</div></div>
+    <div class="kpi ac"><div class="kv">${fmt(r.fab)}</div><div class="kl">Fabricadas (según producción)</div></div>
+    <div class="kpi am"><div class="kv">${fmt(r.kg)}</div><div class="kl">kg de acero</div></div>
+    <div class="kpi gn"><div class="kv">${lib}%</div><div class="kl">Liberadas</div></div>
+  </div>
+
+  ${r.total ? `<div class="card"><div class="ch">Estado de calidad</div><div class="cb">${barra(r, true)}${leyenda(r)}</div></div>` : ''}
+
+  ${filasSol.length ? `<div class="card"><div class="ch">Piezas fabricadas por soldador</div><div class="cb sx">
+    <table class="tbl"><thead><tr><th>Soldador</th><th class="n">Piezas</th><th class="n">kg</th><th class="n">Liberadas</th></tr></thead><tbody>
+    ${filasSol.map(([id, v]) => `<tr><td><span class="dot" style="background:${colorSol(id)};margin-right:7px"></span>${esc(nomSol(id))}</td><td class="n">${fmt(v.u)}</td><td class="n">${fmt(v.kg, 1)}</td><td class="n">${fmt(v.lib)}</td></tr>`).join('')}
+    </tbody></table></div></div>` : ''}
+
+  <div class="enc" style="margin-top:18px"><h2>Piezas</h2></div>
+  ${sinPlano ? `<div class="aviso">${sinPlano} pieza${sinPlano > 1 ? 's no tienen' : ' no tiene'} código de plano. Sus marcas se forman con el nombre; conviene asignarles el plano en Producción.</div>` : ''}
+  ${nEnc ? `<p class="muted" style="font-size:13px;margin-bottom:10px">Las ${nEnc} líneas de encajonado no aparecen aquí porque son operaciones sobre las piezas, no piezas aparte.</p>` : ''}
+  ${!piezas.length ? vacio('Este proyecto no tiene piezas cargadas. Agrégalas en <a href="./">Producción</a>.') : `
+    <div class="filtros"><input id="fPz" type="search" placeholder="Buscar plano, pieza, perfil o soldador" value="${esc(S.fPz)}" data-in="fPz" aria-label="Buscar pieza"></div>
+    <div class="pz-h"><span>Plano</span><span>Pieza</span><span>Perfil</span><span class="n">Cant.</span><span class="n">Fabric.</span><span class="n">Peso kg</span><span>Soldador(es)</span><span>Calidad</span></div>
+    <div class="lp">${vis.length ? vis.map(filaPieza).join('') : vacio('Ninguna pieza coincide con la búsqueda.')}</div>`}`;
+}
+function filaPieza(p) {
+  const r = resumen([p]);
+  const sols = {};
+  p.unidades.filter(u => u.fabricada).forEach(u => { sols[u.soldadorId] = (sols[u.soldadorId] || 0) + 1; });
+  const lib = r.est.Liberada;
+  return `<div class="pz" tabindex="0" data-a="verPieza" data-k="${esc(p.clave)}">
+    <div class="c1"><span class="plano">${esc(p.plano || '—')}</span></div>
+    <div class="c2"><b>${esc(p.nom)}</b></div>
+    <div><span class="lbl">Perfil</span>${esc(gPerf(p.perfilId).nombre)}</div>
+    <div class="num"><span class="lbl">Cantidad</span>${fmt(p.cant)}</div>
+    <div class="num"><span class="lbl">Fabricadas</span>${fmt(p.prod)}</div>
+    <div class="num"><span class="lbl">Peso kg</span>${p.peso ? fmt(p.peso, 2) : '—'}</div>
+    <div class="c7"><span class="lbl">Soldador(es)</span>${Object.keys(sols).length ? `<div class="sols">${Object.entries(sols).map(([id, n]) => `<span><i class="dot" style="background:${colorSol(id)}"></i>${esc(nomSol(id))} (${n})</span>`).join('')}</div>` : '<span class="muted">Sin fabricar</span>'}</div>
+    <div class="c8">${barra(r)}<div class="muted" style="font-size:12px;margin-top:4px;font-weight:600">${lib} de ${p.cant} liberadas</div></div>
+  </div>`;
+}
+
+// ── HOJAS ────────────────────────────────────────────────────────────────────
+const cab = t => `<div class="hcab"><h2>${t}</h2><button class="hx" data-a="cerrar" aria-label="Cerrar">×</button></div>`;
+function abrirHoja(html, hoja) {
+  S.hoja = hoja || null;
+  const v = $('velo');
+  v.innerHTML = `<div class="hoja" role="dialog" aria-modal="true">${html}</div>`;
+  v.hidden = false; document.body.classList.add('sin-scroll');
+  const f = v.querySelector('[autofocus]'); if (f) setTimeout(() => f.focus(), 30);
+}
+function refrescarHoja() {
+  if (!S.hoja || $('velo').hidden) return;
+  const h = $('velo').querySelector('.hoja'), y = h.scrollTop;
+  const html = S.hoja.tipo === 'pieza' ? hojaPieza(S.hoja.clave) : null;
+  if (html === null) return;
+  if (!html) return cerrarHoja();
+  h.innerHTML = html; h.scrollTop = y;
+}
+function cerrarHoja() { S.hoja = null; const v = $('velo'); v.hidden = true; v.innerHTML = ''; document.body.classList.remove('sin-scroll'); }
+
+function hojaDatosQC() {
+  const pj = proy(), q = qcDe(pj.id);
+  return `${cab('Datos de calidad del proyecto')}
+  <form class="form" onsubmit="return false">
+    <div class="fg"><label for="qCli">Cliente</label><input id="qCli" value="${esc(q.cliente)}" autofocus autocomplete="off"></div>
+    <div class="fg"><label for="qObs">Notas de calidad</label><textarea id="qObs">${esc(q.observaciones)}</textarea></div>
+    <p class="muted" style="font-size:13px">El cliente aparecerá en el dossier de calidad. Producción no tiene este campo, por eso se guarda aquí.</p>
+  </form>
+  <div class="hpie"><button class="btn" data-a="cerrar">Cancelar</button><button class="btn bp" data-a="guardarDatosQC">Guardar</button></div>`;
+}
+function hojaPieza(clave) {
+  const pj = proy(); if (!pj) return '';
+  const p = piezasCalidad(pj).find(x => x.clave === clave); if (!p) return '';
+  const r = resumen([p]);
+  const pend = p.unidades.filter(u => u.fabricada && u.origen === 'produccion').length;
+  return `${cab(`<span class="plano">${esc(p.plano || '—')}</span> ${esc(p.nom)}`)}
+  <dl class="datos">
+    <div><dt>Perfil</dt><dd>${esc(gPerf(p.perfilId).nombre)}</dd></div>
+    <div><dt>Cantidad</dt><dd>${fmt(p.cant)}</dd></div>
+    <div><dt>Fabricadas</dt><dd>${fmt(p.prod)}</dd></div>
+    <div><dt>Longitud</dt><dd>${p.long ? fmt(p.long, 2) + ' m' : '—'}</dd></div>
+    <div><dt>Peso unitario</dt><dd>${p.peso ? fmt(p.peso, 2) + ' kg' : '—'}</dd></div>
+  </dl>
+  <div class="sec">Marcas individuales</div>
+  <p class="muted" style="font-size:13px">Toca una marca para indicar quién la soldó. El soldador en cursiva es una sugerencia tomada de los turnos de Producción; confírmalo con la pieza en la mano.</p>
+  <div class="uds">${p.unidades.map(u => `
+    <button class="ud ${u.fabricada ? 'e-' + EC[u.estado] : 'nofab'}" data-a="asignarUd" data-k="${esc(p.clave)}" data-n="${u.n}">
+      <b>${esc(u.marca)}</b>
+      <small>${u.fabricada ? esc(u.estado) : 'Por fabricar'}</small>
+      <small class="${u.origen === 'produccion' ? 'sug' : ''}">${u.soldadorId ? `<i class="dot" style="background:${colorSol(u.soldadorId)}"></i>${esc(nomSol(u.soldadorId))}` : 'Sin soldador'}</small>
+    </button>`).join('')}</div>
+  ${leyenda(r)}
+  <div class="hpie">
+    <button class="btn" data-a="asignarTodas" data-k="${esc(p.clave)}">Asignar un soldador a todas</button>
+    ${pend ? `<button class="btn bgn" data-a="confirmarSug" data-k="${esc(p.clave)}">Confirmar ${pend} sugerida${pend > 1 ? 's' : ''}</button>` : ''}
+    <button class="btn bs" data-a="cerrar">Listo</button>
+  </div>`;
+}
+function hojaSoldador(titulo, accion, clave, n, actual) {
+  const activos = S.soldadores;
+  return `${cab(titulo)}
+  <div class="chips">
+    ${activos.map(s => `<button class="chip ${actual === s.id ? 'on' : ''}" data-a="${accion}" data-k="${esc(clave)}" data-n="${n || ''}" data-s="${s.id}"><i class="dot" style="background:${s.color || '#999'}"></i>${esc(s.nombre)}</button>`).join('')}
+    <button class="chip" data-a="${accion}" data-k="${esc(clave)}" data-n="${n || ''}" data-s="">Sin asignar</button>
+  </div>
+  <div class="hpie"><button class="btn" data-a="volverPieza" data-k="${esc(clave)}">Cancelar</button></div>`;
+}
+
+// ── RENDER Y RUTAS ───────────────────────────────────────────────────────────
+function render() {
+  const a = document.activeElement, fid = a && a.id && $('app').contains(a) ? a.id : null;
+  let sel = null; try { sel = a.selectionStart; } catch (e) {}
+  $('app').innerHTML = S.vista === 'proyecto' ? vProyecto() : vInicio();
+  if (fid) { const el = $(fid); if (el) { el.focus(); try { if (sel !== null) el.setSelectionRange(sel, sel); } catch (e) {} } }
+}
+function ruta() {
+  cerrarHoja();
+  const [v, id] = location.hash.replace(/^#\/?/, '').split('/');
+  if (v === 'proyecto' && id) { if (S.proyId !== id) S.fPz = ''; S.vista = 'proyecto'; S.proyId = decodeURIComponent(id); }
+  else { S.vista = 'inicio'; S.proyId = null; }
+  render(); window.scrollTo(0, 0);
+}
+function actualizar() { render(); refrescarHoja(); }
+
+// ── ACCIONES ─────────────────────────────────────────────────────────────────
+function asignar(clave, nums, solId) {
+  const pj = proy(); if (!pj) return;
+  const cambios = {}; nums.forEach(n => cambios[n] = {soldadorId:solId});
+  guardarQC(pj.id, {unidades:{[clave]:cambios}});
+}
+const ACC = {
+  irInicio: () => { location.hash = '#/'; },
+  abrir: el => { location.hash = '#/proyecto/' + encodeURIComponent(el.dataset.id); },
+  fTipo: el => { S.fTipo = el.dataset.v; render(); },
+  cerrar: () => cerrarHoja(),
+  datosQC: () => abrirHoja(hojaDatosQC()),
+  guardarDatosQC: () => {
+    guardarQC(proy().id, {cliente:$('qCli').value.trim(), observaciones:$('qObs').value.trim()});
+    cerrarHoja(); toast('Datos de calidad guardados');
+  },
+  verPieza: el => abrirHoja(hojaPieza(el.dataset.k), {tipo:'pieza', clave:el.dataset.k}),
+  volverPieza: el => abrirHoja(hojaPieza(el.dataset.k), {tipo:'pieza', clave:el.dataset.k}),
+  asignarUd: el => {
+    const p = piezasCalidad(proy()).find(x => x.clave === el.dataset.k);
+    const u = p.unidades[parseInt(el.dataset.n) - 1];
+    abrirHoja(hojaSoldador(`¿Quién soldó ${esc(u.marca)}?`, 'guardarUd', p.clave, u.n, u.soldadorId));
+  },
+  guardarUd: el => {
+    asignar(el.dataset.k, [parseInt(el.dataset.n)], el.dataset.s);
+    abrirHoja(hojaPieza(el.dataset.k), {tipo:'pieza', clave:el.dataset.k}); toast('Soldador asignado');
+  },
+  asignarTodas: el => abrirHoja(hojaSoldador('Asignar un soldador a todas las marcas', 'guardarTodas', el.dataset.k, '', null)),
+  guardarTodas: el => {
+    const p = piezasCalidad(proy()).find(x => x.clave === el.dataset.k);
+    asignar(p.clave, p.unidades.map(u => u.n), el.dataset.s);
+    abrirHoja(hojaPieza(p.clave), {tipo:'pieza', clave:p.clave}); toast(`Soldador asignado a ${p.cant} marcas`);
+  },
+  confirmarSug: el => {
+    const p = piezasCalidad(proy()).find(x => x.clave === el.dataset.k);
+    const pj = proy(), cambios = {};
+    p.unidades.filter(u => u.fabricada && u.origen === 'produccion').forEach(u => cambios[u.n] = {soldadorId:u.soldadorId});
+    guardarQC(pj.id, {unidades:{[p.clave]:cambios}});
+    toast(`${Object.keys(cambios).length} marcas confirmadas`);
+  }
+};
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-a]'); if (!el) return;
+  const fn = ACC[el.dataset.a]; if (fn) { e.preventDefault(); fn(el, e); }
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !$('velo').hidden) cerrarHoja();
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('[tabindex][data-a]')) { e.preventDefault(); e.target.click(); }
+});
+document.addEventListener('input', e => { const k = e.target.dataset.in; if (k) { S[k] = e.target.value; render(); } });
+
+// ── ESCUCHAS EN TIEMPO REAL ──────────────────────────────────────────────────
+function escuchar(col, fn, clave) {
+  onSnapshot(collection(db, col), snap => {
+    fn(snap.docs.map(d => ({id:d.id, ...d.data()})));
+    S.cargado[clave] = true;
+    const c = $('conexion'); c.textContent = snap.metadata.fromCache ? 'Sin conexión' : 'En línea'; c.classList.toggle('off', snap.metadata.fromCache);
+    actualizar();
+  }, err => {
+    console.error(err); $('conexion').textContent = 'Error'; $('conexion').classList.add('off');
+    toast('No se pudo leer ' + col + ': ' + err.message, 'error');
+  });
+}
+escuchar('proyectos', a => S.proyectos = a, 'proyectos');
+escuchar('soldadores', a => S.soldadores = a.sort((x, y) => String(x.id).localeCompare(String(y.id), 'es', {numeric:true})), 'soldadores');
+escuchar('registros', a => S.registros = a, 'registros');
+escuchar('perfiles', a => S.perfiles = a, 'perfiles');
+escuchar(QC, a => { S.qc = {}; a.forEach(d => S.qc[d.id] = d); }, 'qc');
+
+window.addEventListener('hashchange', ruta);
+ruta();
+</script>
+</body>
+</html>
